@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListUsers, useCreateUser, useUpdateUser, useDeleteUser, getListUsersQueryKey } from "@workspace/api-client-react";
+import { useListUsers, useInviteUser, useUpdateUser, useRemoveUser, getListUsersQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,8 +46,8 @@ export default function UsersSettings() {
   const [inviteRole, setInviteRole] = useState("viewer");
 
   const { data: users = MOCK_USERS } = useListUsers({ query: { queryKey: getListUsersQueryKey() } });
-  const createUser = useCreateUser({ mutation: { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() }); setShowInvite(false); toast({ title: "Invitation sent" }); } } });
-  const deleteUser = useDeleteUser({ mutation: { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() }); toast({ title: "User removed" }); } } });
+  const createUser = useInviteUser({ mutation: { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() }); setShowInvite(false); toast({ title: "Invitation sent" }); } } });
+  const deleteUser = useRemoveUser({ mutation: { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() }); toast({ title: "User removed" }); } } });
   const updateUser = useUpdateUser({ mutation: { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() }); toast({ title: "Role updated" }); } } });
 
   const displayUsers = users.length > 0 ? users : MOCK_USERS;
