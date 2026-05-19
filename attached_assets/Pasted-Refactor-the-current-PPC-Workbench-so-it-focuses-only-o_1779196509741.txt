@@ -1,0 +1,300 @@
+Refactor the current PPC Workbench so it focuses only on PPC / Paid Search, not paid social.
+
+Rename the page title to “PPC / Paid Search Workbench”.
+
+Subtitle:
+“Plan, connect, launch, optimise, and report on paid search campaigns across Google, Bing, Baidu, Naver, and other search ad platforms.”
+
+Important:
+Do not include Meta, LinkedIn, TikTok, or paid social workflows inside this PPC page. Paid social belongs in the Social Workbench.
+
+The PPC / Paid Search Workbench should focus on:
+- Google Ads
+- Microsoft Advertising / Bing
+- Baidu Search Ads
+- Naver Search Ads
+- Yahoo Japan Search Ads placeholder
+- other major paid search platforms where API access is available
+
+Update the main tabs to:
+1. Campaigns
+2. Create / Plan
+3. Search Ad Accounts
+4. Keywords
+5. Bidding & Budget
+6. Ads & Extensions
+7. Landing Page & Tracking
+8. AI Recommendations
+9. Approvals
+10. Reports
+
+Update the top CTA buttons:
+- New Search Campaign
+- Import from Search Ad Network
+- Sync Search Accounts
+- Generate Search Ad Copy
+
+Top summary cards should show:
+- Active Search Campaigns
+- Monthly Search Spend
+- Budget Remaining
+- Avg CPC
+- Cost per Lead
+- Qualified Leads
+- Tracking Issues
+- AI Search Opportunities
+
+Add a workflow status board with:
+- Draft
+- Data Check
+- Keyword Plan
+- AI Plan
+- Approval
+- Ready to Launch
+- Live
+- Optimising
+- Reporting
+
+Campaigns tab:
+Create a richer paid search campaign table with columns:
+- Campaign name
+- Search platform
+- Campaign source
+- Campaign type
+- Marketing tags
+- Objective
+- Status
+- Budget
+- Spend
+- Avg CPC
+- CTR
+- Conversions
+- Cost per lead
+- Qualified leads
+- Conversion tracking status
+- Sync status
+- Next AI action
+- Approval status
+- Owner
+- Actions
+
+Campaign source options:
+- Standalone PPC campaign
+- Linked to SPARK master campaign
+- Imported from search ad platform
+- AI-generated search campaign
+- Ad-hoc campaign
+
+Campaign type options:
+- Brand Search
+- Non-Brand Search
+- Competitor Search
+- Product Search
+- Service Search
+- Local Search
+- Lead Generation Search
+- Regional Search Campaign
+- Retargeting Search / RLSA placeholder
+- Performance Max placeholder
+- Shopping Search placeholder
+- Ad-hoc Search Campaign
+
+Marketing tags should appear as chips, for example:
+- Q2 Growth
+- Singapore SMEs
+- High Intent
+- Urgent Push
+- Board Approved
+- Budget Sensitive
+- Test Campaign
+
+New Search Campaign workflow:
+When the user clicks “New Search Campaign”, open a multi-step wizard.
+
+Wizard steps:
+
+Step 1: Campaign Identity
+- campaign name
+- campaign source
+- optional parent SPARK campaign
+- campaign type
+- marketing tags
+- owner
+- status
+
+Step 2: Objective
+- leads
+- sales
+- website traffic
+- appointments
+- product/service promotion
+- local enquiries
+- brand protection
+- competitor conquest
+- target CPL
+- target CPA
+- target ROAS optional
+- primary conversion event
+
+Step 3: Search Platform and Account
+- select platform: Google Ads, Microsoft Advertising / Bing, Baidu, Naver, Yahoo Japan placeholder
+- select ad account
+- account currency
+- access level: read-only, draft, execute
+- last sync status
+- conversion tracking status
+
+Step 4: Keywords
+- keyword themes
+- brand keywords
+- non-brand keywords
+- competitor keywords
+- product/service keywords
+- local intent keywords
+- negative keywords
+- match type: exact, phrase, broad
+- AI keyword suggestions
+- AI negative keyword suggestions
+
+Step 5: Bidding and Budget
+- total budget
+- daily budget
+- budget pacing: conservative, balanced, aggressive
+- bid strategy
+- max CPC
+- target CPA
+- target ROAS optional
+- approval threshold
+- AI budget suggestion cards
+
+Step 6: Landing Page and Tracking
+- landing page URL
+- GA4 conversion event
+- CRM lead source mapping
+- UTM template
+- form tracking status
+- call tracking placeholder
+- AI tracking warnings
+
+Step 7: Search Ads and Extensions
+- headlines
+- descriptions
+- display URL
+- final URL
+- callout extensions placeholder
+- sitelink extensions placeholder
+- structured snippets placeholder
+- CTA
+- ad approval status
+- buttons: Generate Search Ad Copy, Generate Extensions, Send for Creative Approval
+
+Step 8: AI Search Plan Review
+Generate a mock SPARK paid search plan showing:
+- campaign structure
+- search platform recommendation
+- keyword strategy
+- match type strategy
+- negative keyword strategy
+- budget recommendation
+- bidding recommendation
+- ad copy suggestions
+- landing page recommendation
+- tracking checklist
+- risk flags
+- approval requirements
+- expected optimisation actions
+
+Step 9: Approval and Launch
+Show approval checklist:
+- budget approval
+- keyword approval
+- ad copy approval
+- tracking approval
+- launch approval
+
+Buttons:
+- Save Draft
+- Request Approval
+- Simulate Launch
+- Simulate Sync to Search Ad Platform
+
+Edit campaign:
+Create an Edit Campaign flow using the same wizard pre-filled with existing campaign data.
+
+If the user changes budget, keywords, match types, negative keywords, ads, landing page, or tracking settings, show:
+- change summary
+- approval requirement
+- change history
+- who changed it
+- when it changed
+- approval status
+
+Search Ad Accounts tab:
+Show search platform connection cards for:
+- Google Ads
+- Microsoft Advertising / Bing
+- Baidu Search Ads
+- Naver Search Ads
+- Yahoo Japan Search Ads placeholder
+
+Each card should show:
+- connected / not connected / coming soon
+- access level
+- account ID
+- currency
+- last sync
+- campaigns imported
+- conversion tracking status
+- button to connect or simulate connection
+
+AI Recommendations tab:
+Create actionable paid search recommendation cards.
+
+Recommendation types:
+- Budget
+- Keyword
+- Negative Keyword
+- Match Type
+- Bid Strategy
+- Ad Copy
+- Landing Page
+- Tracking
+- Risk Alert
+
+Example recommendations:
+- Add negative keywords to reduce wasted spend
+- Shift budget from Non-Brand Search to Brand Search
+- Reduce bids on high-CPC low-conversion keywords
+- Create competitor search campaign draft
+- Fix missing GA4 conversion event before launch
+- Generate new ad copy for low CTR campaign
+- Improve landing page before increasing budget
+- Pause keyword group with poor CRM-qualified lead quality
+
+Approvals tab:
+Show approval requests related to paid search:
+- budget approval
+- keyword approval
+- negative keyword approval
+- ad copy approval
+- landing page approval
+- tracking approval
+- launch approval
+- AI action approval
+
+Reports tab:
+Show paid search reports:
+- campaign performance summary
+- platform performance
+- keyword performance
+- search-term insights placeholder
+- budget pacing
+- lead quality
+- ad copy performance
+- landing page performance
+- AI executive summary
+- next recommended actions
+
+Design:
+Keep the dark enterprise SaaS style. Make the page workflow-driven, not a static metrics table.
+Use status badges, workflow stages, campaign type chips, marketing tag chips, platform cards, AI recommendation cards, approval badges, and a clear multi-step wizard.
