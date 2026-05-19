@@ -3,20 +3,46 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: SPARK AI Marketing Suite API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: organizations
+    description: Organization/tenant operations
+  - name: campaigns
+    description: Campaign management
+  - name: blueprints
+    description: Campaign blueprints
+  - name: channels
+    description: Channel workbenches
+  - name: integrations
+    description: Platform integrations
+  - name: recommendations
+    description: AI recommendations
+  - name: approvals
+    description: Approval workflows
+  - name: segments
+    description: Customer segments
+  - name: assets
+    description: Creative assets
+  - name: reports
+    description: Reports and analytics
+  - name: users
+    description: User management
+  - name: dashboard
+    description: Dashboard summary data
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +50,820 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Auth ──────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+
+  # ── Dashboard ─────────────────────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary metrics
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/performance:
+    get:
+      operationId: getDashboardPerformance
+      tags: [dashboard]
+      summary: Get campaign performance chart data
+      responses:
+        "200":
+          description: Performance chart data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PerformanceDataPoint"
+
+  /dashboard/channel-health:
+    get:
+      operationId: getChannelHealth
+      tags: [dashboard]
+      summary: Get health status for all channels
+      responses:
+        "200":
+          description: Channel health statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChannelHealth"
+
+  # ── Campaigns ─────────────────────────────────────────────────────────
+  /campaigns:
+    get:
+      operationId: listCampaigns
+      tags: [campaigns]
+      summary: List all campaigns
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+    post:
+      operationId: createCampaign
+      tags: [campaigns]
+      summary: Create a new campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInput"
+      responses:
+        "201":
+          description: Campaign created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}:
+    get:
+      operationId: getCampaign
+      tags: [campaigns]
+      summary: Get campaign by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateCampaign
+      tags: [campaigns]
+      summary: Update a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignUpdate"
+      responses:
+        "200":
+          description: Campaign updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+    delete:
+      operationId: deleteCampaign
+      tags: [campaigns]
+      summary: Delete a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /campaigns/{id}/blueprint:
+    post:
+      operationId: generateBlueprint
+      tags: [blueprints]
+      summary: Generate AI blueprint for a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Generated blueprint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignBlueprint"
+
+  /campaigns/{id}/submit-approval:
+    post:
+      operationId: submitCampaignForApproval
+      tags: [campaigns]
+      summary: Submit campaign for approval
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  # ── Channels ──────────────────────────────────────────────────────────
+  /channels/ppc:
+    get:
+      operationId: getPpcData
+      tags: [channels]
+      summary: Get PPC workbench data
+      responses:
+        "200":
+          description: PPC data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PpcWorkbenchData"
+
+  /channels/ppc/generate-ad-copy:
+    post:
+      operationId: generateAdCopy
+      tags: [channels]
+      summary: Generate AI ad copy variants
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdCopyRequest"
+      responses:
+        "200":
+          description: Generated ad copy
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdCopyVariant"
+
+  /channels/seo:
+    get:
+      operationId: getSeoData
+      tags: [channels]
+      summary: Get SEO workbench data
+      responses:
+        "200":
+          description: SEO data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeoWorkbenchData"
+
+  /channels/seo/scan:
+    post:
+      operationId: runSeoScan
+      tags: [channels]
+      summary: Run mock SEO scan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeoScanRequest"
+      responses:
+        "200":
+          description: SEO scan results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeoWorkbenchData"
+
+  /channels/social:
+    get:
+      operationId: getSocialData
+      tags: [channels]
+      summary: Get social workbench data
+      responses:
+        "200":
+          description: Social data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialWorkbenchData"
+
+  /channels/social/generate-plan:
+    post:
+      operationId: generateSocialPlan
+      tags: [channels]
+      summary: Generate weekly social content plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SocialPlanRequest"
+      responses:
+        "200":
+          description: Social content plan
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SocialPost"
+
+  /channels/crm:
+    get:
+      operationId: getCrmData
+      tags: [channels]
+      summary: Get CRM and email strategy data
+      responses:
+        "200":
+          description: CRM data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrmWorkbenchData"
+
+  /channels/messaging:
+    get:
+      operationId: getMessagingData
+      tags: [channels]
+      summary: Get messaging workbench data
+      responses:
+        "200":
+          description: Messaging data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagingWorkbenchData"
+
+  /channels/analytics:
+    get:
+      operationId: getAnalyticsData
+      tags: [channels]
+      summary: Get analytics and reporting data
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsData"
+
+  # ── Integrations ──────────────────────────────────────────────────────
+  /integrations:
+    get:
+      operationId: listIntegrations
+      tags: [integrations]
+      summary: List all integrations
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of integrations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Integration"
+
+  /integrations/{id}/connect:
+    post:
+      operationId: connectIntegration
+      tags: [integrations]
+      summary: Connect an integration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Integration connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Integration"
+
+  /integrations/{id}/disconnect:
+    post:
+      operationId: disconnectIntegration
+      tags: [integrations]
+      summary: Disconnect an integration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Integration disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Integration"
+
+  # ── AI Recommendations ────────────────────────────────────────────────
+  /recommendations:
+    get:
+      operationId: listRecommendations
+      tags: [recommendations]
+      summary: List AI recommendations
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiRecommendation"
+
+  /recommendations/{id}/approve:
+    post:
+      operationId: approveRecommendation
+      tags: [recommendations]
+      summary: Approve an AI recommendation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recommendation approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRecommendation"
+
+  /recommendations/{id}/reject:
+    post:
+      operationId: rejectRecommendation
+      tags: [recommendations]
+      summary: Reject an AI recommendation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recommendation rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRecommendation"
+
+  # ── Approvals ─────────────────────────────────────────────────────────
+  /approvals:
+    get:
+      operationId: listApprovals
+      tags: [approvals]
+      summary: List approval requests
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of approvals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApprovalRequest"
+
+  /approvals/{id}/approve:
+    post:
+      operationId: approveRequest
+      tags: [approvals]
+      summary: Approve a request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalAction"
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRequest"
+
+  /approvals/{id}/reject:
+    post:
+      operationId: rejectRequest
+      tags: [approvals]
+      summary: Reject a request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalAction"
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRequest"
+
+  # ── Customer Segments ─────────────────────────────────────────────────
+  /segments:
+    get:
+      operationId: listSegments
+      tags: [segments]
+      summary: List customer segments
+      responses:
+        "200":
+          description: List of segments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerSegment"
+    post:
+      operationId: createSegment
+      tags: [segments]
+      summary: Create a customer segment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SegmentInput"
+      responses:
+        "201":
+          description: Segment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSegment"
+
+  /segments/opportunities:
+    get:
+      operationId: getOpportunityFeed
+      tags: [segments]
+      summary: Get AI-discovered opportunity feed
+      responses:
+        "200":
+          description: Opportunity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Opportunity"
+
+  /segments/intelligence-summary:
+    get:
+      operationId: getIntelligenceSummary
+      tags: [segments]
+      summary: Get customer intelligence summary cards
+      responses:
+        "200":
+          description: Intelligence summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntelligenceSummary"
+
+  # ── Assets ────────────────────────────────────────────────────────────
+  /assets:
+    get:
+      operationId: listAssets
+      tags: [assets]
+      summary: List creative assets
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Asset"
+    post:
+      operationId: createAsset
+      tags: [assets]
+      summary: Create a creative asset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetInput"
+      responses:
+        "201":
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Asset"
+
+  /assets/generate:
+    post:
+      operationId: generateAssetPack
+      tags: [assets]
+      summary: Generate a full asset pack via AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetPackRequest"
+      responses:
+        "200":
+          description: Generated asset pack
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Asset"
+
+  # ── Reports ───────────────────────────────────────────────────────────
+  /reports:
+    get:
+      operationId: listReports
+      tags: [reports]
+      summary: List reports
+      responses:
+        "200":
+          description: List of reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Report"
+
+  /reports/generate:
+    post:
+      operationId: generateReport
+      tags: [reports]
+      summary: Generate a new report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRequest"
+      responses:
+        "200":
+          description: Generated report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+
+  /reports/{id}:
+    get:
+      operationId: getReport
+      tags: [reports]
+      summary: Get report by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+
+  # ── Users ─────────────────────────────────────────────────────────────
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users in the organization
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: inviteUser
+      tags: [users]
+      summary: Invite a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInviteInput"
+      responses:
+        "201":
+          description: User invited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user role or status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: removeUser
+      tags: [users]
+      summary: Remove user from organization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +874,901 @@ components:
       required:
         - status
 
+    # ── Auth ──
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+
+    # ── User ──
+    User:
+      type: object
+      required: [id, name, email, role, organizationId, status]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, marketing_manager, channel_specialist, creative_reviewer, finance_approver, viewer]
+        organizationId:
+          type: integer
+        organizationName:
+          type: ["string", "null"]
+        organizationPlan:
+          type: ["string", "null"]
+        avatar:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [active, inactive, pending]
+        createdAt:
+          type: string
+
+    UserInviteInput:
+      type: object
+      required: [name, email, role]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        role:
+          type: string
+        status:
+          type: string
+
+    # ── Dashboard ──
+    DashboardSummary:
+      type: object
+      required: [activeCampaigns, totalSpend, leadsGenerated, conversionRate, pendingApprovals, aiOpportunities, revenueInfluenced, budgetUsed]
+      properties:
+        activeCampaigns:
+          type: integer
+        totalSpend:
+          type: number
+        leadsGenerated:
+          type: integer
+        conversionRate:
+          type: number
+        pendingApprovals:
+          type: integer
+        aiOpportunities:
+          type: integer
+        revenueInfluenced:
+          type: number
+        budgetUsed:
+          type: number
+        budgetTotal:
+          type: number
+
+    PerformanceDataPoint:
+      type: object
+      required: [date, leads, spend, conversions]
+      properties:
+        date:
+          type: string
+        leads:
+          type: integer
+        spend:
+          type: number
+        conversions:
+          type: integer
+        ctr:
+          type: number
+
+    ChannelHealth:
+      type: object
+      required: [channel, status, score, metric, metricValue]
+      properties:
+        channel:
+          type: string
+        status:
+          type: string
+          enum: [healthy, warning, critical, inactive]
+        score:
+          type: integer
+        metric:
+          type: string
+        metricValue:
+          type: string
+        trend:
+          type: string
+
+    # ── Campaign ──
+    Campaign:
+      type: object
+      required: [id, name, objective, status, budget, startDate, endDate, channels, organizationId, ownerId, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        objective:
+          type: string
+          enum: [lead_generation, sales, awareness, website_traffic, retention, reactivation, event_promotion, product_launch]
+        status:
+          type: string
+          enum: [draft, planning, awaiting_approval, ready_to_launch, active, optimising, paused, completed]
+        budget:
+          type: number
+        dailyBudget:
+          type: ["number", "null"]
+        startDate:
+          type: string
+        endDate:
+          type: string
+        channels:
+          type: array
+          items:
+            type: string
+        organizationId:
+          type: integer
+        ownerId:
+          type: integer
+        ownerName:
+          type: ["string", "null"]
+        targetAudience:
+          type: ["string", "null"]
+        productDescription:
+          type: ["string", "null"]
+        spendStyle:
+          type: ["string", "null"]
+        healthScore:
+          type: ["integer", "null"]
+        leadsGenerated:
+          type: ["integer", "null"]
+        spend:
+          type: ["number", "null"]
+        blueprint:
+          anyOf:
+            - $ref: "#/components/schemas/CampaignBlueprint"
+            - type: "null"
+        createdAt:
+          type: string
+
+    CampaignInput:
+      type: object
+      required: [name, objective, budget, startDate, endDate, channels]
+      properties:
+        name:
+          type: string
+        objective:
+          type: string
+        budget:
+          type: number
+        dailyBudget:
+          type: ["number", "null"]
+        startDate:
+          type: string
+        endDate:
+          type: string
+        channels:
+          type: array
+          items:
+            type: string
+        targetAudience:
+          type: ["string", "null"]
+        productDescription:
+          type: ["string", "null"]
+        spendStyle:
+          type: ["string", "null"]
+
+    CampaignUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+        budget:
+          type: number
+        targetAudience:
+          type: string
+        productDescription:
+          type: string
+
+    CampaignBlueprint:
+      type: object
+      required: [id, campaignId, strategySummary, audienceStrategy, budgetPlan, channelPlan, creativePlan, experimentPlan, measurementPlan, executionChecklist]
+      properties:
+        id:
+          type: integer
+        campaignId:
+          type: integer
+        strategySummary:
+          type: string
+        audienceStrategy:
+          type: string
+        budgetPlan:
+          type: string
+        channelPlan:
+          type: string
+        creativePlan:
+          type: string
+        experimentPlan:
+          type: string
+        measurementPlan:
+          type: string
+        executionChecklist:
+          type: array
+          items:
+            type: string
+        approvalRequirements:
+          type: array
+          items:
+            type: string
+
+    # ── Channel Workbenches ──
+    PpcWorkbenchData:
+      type: object
+      required: [totalSpend, cpc, ctr, conversions, cpa, roas, recommendations, campaigns]
+      properties:
+        totalSpend:
+          type: number
+        cpc:
+          type: number
+        ctr:
+          type: number
+        conversions:
+          type: integer
+        cpa:
+          type: number
+        roas:
+          type: number
+        recommendations:
+          type: array
+          items:
+            type: string
+        campaigns:
+          type: array
+          items:
+            $ref: "#/components/schemas/PpcCampaignRow"
+        platforms:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformCard"
+
+    PpcCampaignRow:
+      type: object
+      required: [name, spend, cpc, ctr, conversions, status]
+      properties:
+        name:
+          type: string
+        spend:
+          type: number
+        cpc:
+          type: number
+        ctr:
+          type: number
+        conversions:
+          type: integer
+        status:
+          type: string
+
+    PlatformCard:
+      type: object
+      required: [name, status, logo]
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+        logo:
+          type: string
+
+    AdCopyRequest:
+      type: object
+      required: [product, targetAudience, tone]
+      properties:
+        product:
+          type: string
+        targetAudience:
+          type: string
+        tone:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+
+    AdCopyVariant:
+      type: object
+      required: [headline, description, cta]
+      properties:
+        headline:
+          type: string
+        description:
+          type: string
+        cta:
+          type: string
+        platform:
+          type: string
+
+    SeoWorkbenchData:
+      type: object
+      required: [seoScore, technicalIssues, contentIssues, keywordOpportunities, priorityTasks]
+      properties:
+        seoScore:
+          type: integer
+        technicalIssues:
+          type: array
+          items:
+            $ref: "#/components/schemas/SeoIssue"
+        contentIssues:
+          type: array
+          items:
+            $ref: "#/components/schemas/SeoIssue"
+        keywordOpportunities:
+          type: array
+          items:
+            $ref: "#/components/schemas/KeywordOpportunity"
+        priorityTasks:
+          type: array
+          items:
+            type: string
+        metaTitleSuggestions:
+          type: array
+          items:
+            type: string
+
+    SeoIssue:
+      type: object
+      required: [issue, severity, count]
+      properties:
+        issue:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        count:
+          type: integer
+
+    KeywordOpportunity:
+      type: object
+      required: [keyword, volume, difficulty, opportunity]
+      properties:
+        keyword:
+          type: string
+        volume:
+          type: integer
+        difficulty:
+          type: integer
+        opportunity:
+          type: string
+
+    SeoScanRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+
+    SocialWorkbenchData:
+      type: object
+      required: [posts, platforms, engagementSummary]
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialPost"
+        platforms:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialPlatformCard"
+        engagementSummary:
+          $ref: "#/components/schemas/SocialEngagementSummary"
+
+    SocialPost:
+      type: object
+      required: [id, content, platform, scheduledDate, status]
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+        platform:
+          type: string
+        scheduledDate:
+          type: string
+        status:
+          type: string
+        engagement:
+          type: ["integer", "null"]
+
+    SocialPlatformCard:
+      type: object
+      required: [name, followers, status]
+      properties:
+        name:
+          type: string
+        followers:
+          type: string
+        status:
+          type: string
+
+    SocialEngagementSummary:
+      type: object
+      required: [totalReach, avgEngagement, topPlatform]
+      properties:
+        totalReach:
+          type: integer
+        avgEngagement:
+          type: number
+        topPlatform:
+          type: string
+
+    SocialPlanRequest:
+      type: object
+      required: [platforms, theme]
+      properties:
+        platforms:
+          type: array
+          items:
+            type: string
+        theme:
+          type: string
+        postsPerWeek:
+          type: integer
+
+    CrmWorkbenchData:
+      type: object
+      required: [segments, emailSequences, lifecycleIdeas]
+      properties:
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerSegment"
+        emailSequences:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailSequence"
+        lifecycleIdeas:
+          type: array
+          items:
+            type: string
+        reactivationIdeas:
+          type: array
+          items:
+            type: string
+
+    EmailSequence:
+      type: object
+      required: [id, name, steps, status]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        steps:
+          type: integer
+        status:
+          type: string
+        targetSegment:
+          type: ["string", "null"]
+
+    MessagingWorkbenchData:
+      type: object
+      required: [templates, flows]
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageTemplate"
+        flows:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageFlow"
+        connectionStatus:
+          type: string
+
+    MessageTemplate:
+      type: object
+      required: [id, name, type, content, status]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        content:
+          type: string
+        status:
+          type: string
+
+    MessageFlow:
+      type: object
+      required: [id, name, steps, status]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        steps:
+          type: integer
+        status:
+          type: string
+        trigger:
+          type: string
+
+    AnalyticsData:
+      type: object
+      required: [conversionFunnel, channelPerformance, anomalies, aiSummary]
+      properties:
+        conversionFunnel:
+          type: array
+          items:
+            $ref: "#/components/schemas/FunnelStage"
+        channelPerformance:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChannelPerformance"
+        anomalies:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnomalyAlert"
+        aiSummary:
+          type: string
+        recommendedNextActions:
+          type: array
+          items:
+            type: string
+
+    FunnelStage:
+      type: object
+      required: [stage, value, conversionRate]
+      properties:
+        stage:
+          type: string
+        value:
+          type: integer
+        conversionRate:
+          type: number
+
+    ChannelPerformance:
+      type: object
+      required: [channel, spend, leads, cpl, conversionRate]
+      properties:
+        channel:
+          type: string
+        spend:
+          type: number
+        leads:
+          type: integer
+        cpl:
+          type: number
+        conversionRate:
+          type: number
+
+    AnomalyAlert:
+      type: object
+      required: [title, severity, description]
+      properties:
+        title:
+          type: string
+        severity:
+          type: string
+          enum: [critical, warning, info]
+        description:
+          type: string
+
+    # ── Integrations ──
+    Integration:
+      type: object
+      required: [id, provider, category, status, description]
+      properties:
+        id:
+          type: integer
+        provider:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+          enum: [connected, not_connected, coming_soon, requires_admin, read_only, approval_required]
+        description:
+          type: string
+        logo:
+          type: ["string", "null"]
+        lastSyncedAt:
+          type: ["string", "null"]
+
+    # ── AI Recommendations ──
+    AiRecommendation:
+      type: object
+      required: [id, type, title, reasoning, confidence, impactEstimate, status, approvalRequired, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [budget, creative, audience, seo, crm, campaign_opportunity, analytics_insight, risk_alert, channel_optimisation]
+        title:
+          type: string
+        reasoning:
+          type: string
+        confidence:
+          type: number
+        impactEstimate:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected, saved_for_later]
+        approvalRequired:
+          type: boolean
+        campaignId:
+          type: ["integer", "null"]
+        channelType:
+          type: ["string", "null"]
+        suggestedAction:
+          type: string
+        dataSources:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+
+    # ── Approvals ──
+    ApprovalRequest:
+      type: object
+      required: [id, type, title, description, requestedBy, requestedByName, requiredRole, status, riskLevel, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [campaign_launch, budget, ad_copy, creative_asset, audience_targeting, crm_segment, messaging, ai_recommendation]
+        title:
+          type: string
+        description:
+          type: string
+        requestedBy:
+          type: integer
+        requestedByName:
+          type: string
+        requiredRole:
+          type: string
+        status:
+          type: string
+          enum: [draft, pending, approved, rejected, changes_requested, scheduled, executed, paused]
+        riskLevel:
+          type: string
+          enum: [low, medium, high, critical]
+        budgetImpact:
+          type: ["number", "null"]
+        aiReasoning:
+          type: ["string", "null"]
+        campaignId:
+          type: ["integer", "null"]
+        campaignName:
+          type: ["string", "null"]
+        dueDate:
+          type: ["string", "null"]
+        comments:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+
+    ApprovalAction:
+      type: object
+      required: [comment]
+      properties:
+        comment:
+          type: string
+
+    # ── Customer Segments ──
+    CustomerSegment:
+      type: object
+      required: [id, name, description, source, size, tags, organizationId]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        source:
+          type: string
+        size:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        insightSummary:
+          type: ["string", "null"]
+        organizationId:
+          type: integer
+        conversionRate:
+          type: ["number", "null"]
+        trend:
+          type: ["string", "null"]
+
+    SegmentInput:
+      type: object
+      required: [name, description, source, tags]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        source:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    Opportunity:
+      type: object
+      required: [id, title, type, description, potentialValue, segmentSize, priority]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+        potentialValue:
+          type: string
+        segmentSize:
+          type: integer
+        priority:
+          type: string
+          enum: [high, medium, low]
+
+    IntelligenceSummary:
+      type: object
+      required: [dormantLeads, highIntentVisitors, upsellCandidates, lostOpportunities, highValueSegments, poorLeadSources, bestConvertingSegment]
+      properties:
+        dormantLeads:
+          type: integer
+        highIntentVisitors:
+          type: integer
+        upsellCandidates:
+          type: integer
+        lostOpportunities:
+          type: integer
+        highValueSegments:
+          type: integer
+        poorLeadSources:
+          type: integer
+        bestConvertingSegment:
+          type: string
+
+    # ── Assets ──
+    Asset:
+      type: object
+      required: [id, type, title, content, status, approvalStatus, createdBy, organizationId, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [ad_copy, email_copy, social_post, landing_page_copy, whatsapp_message, image_prompt, creative_concept]
+        title:
+          type: string
+        content:
+          type: string
+        status:
+          type: string
+          enum: [draft, review, approved, rejected]
+        approvalStatus:
+          type: string
+          enum: [pending, approved, rejected, not_required]
+        createdBy:
+          type: integer
+        organizationId:
+          type: integer
+        campaignId:
+          type: ["integer", "null"]
+        campaignName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    AssetInput:
+      type: object
+      required: [type, title, content]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        campaignId:
+          type: ["integer", "null"]
+
+    AssetPackRequest:
+      type: object
+      required: [campaignId, channels]
+      properties:
+        campaignId:
+          type: integer
+        channels:
+          type: array
+          items:
+            type: string
+        tone:
+          type: ["string", "null"]
+
+    # ── Reports ──
+    Report:
+      type: object
+      required: [id, type, title, summary, organizationId, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [campaign_performance, channel_performance, executive_summary, weekly_optimisation, crm_segment, budget_usage, creative_performance]
+        title:
+          type: string
+        summary:
+          type: string
+        insights:
+          type: array
+          items:
+            type: string
+        whatWorked:
+          type: array
+          items:
+            type: string
+        whatDidntWork:
+          type: array
+          items:
+            type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+        organizationId:
+          type: integer
+        campaignId:
+          type: ["integer", "null"]
+        campaignName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ReportRequest:
+      type: object
+      required: [type, title]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        campaignId:
+          type: ["integer", "null"]
+        dateRange:
+          type: ["string", "null"]
