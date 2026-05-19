@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useGetPpcData, useGenerateAdCopy, getGetPpcDataQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MonitorPlay, Wand2, TrendingUp, TrendingDown, CheckCircle, XCircle, Loader2, Copy } from "lucide-react";
+import { MonitorPlay, Wand2, TrendingUp, TrendingDown, CheckCircle, XCircle, Loader2, Copy, AlertCircle, RefreshCw, ExternalLink, Plug, ArrowRight } from "lucide-react";
 
 const MOCK_PPC = {
   totalSpend: 58420, cpc: 3.24, ctr: 3.1, conversions: 847, cpa: 68.98, roas: 4.2,
@@ -96,7 +97,7 @@ export default function PPC() {
         <TabsList className="bg-card border border-border">
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="recommendations">AI Recommendations</TabsTrigger>
-          <TabsTrigger value="platforms">Platform Connections</TabsTrigger>
+          <TabsTrigger value="platforms">Ad Network APIs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="campaigns" className="mt-4">
@@ -145,22 +146,91 @@ export default function PPC() {
           ))}
         </TabsContent>
 
-        <TabsContent value="platforms" className="mt-4">
+        <TabsContent value="platforms" className="mt-4 space-y-4">
+          {/* Banner linking to full API settings */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
+            <div className="flex items-center gap-2 text-sm">
+              <Plug size={14} className="text-primary shrink-0" />
+              <span className="text-muted-foreground">Manage API keys, webhooks and rate limits for all networks in</span>
+              <Link href="/settings/api-connections" className="text-primary font-medium hover:underline underline-offset-2">
+                Settings → API Connections
+              </Link>
+            </div>
+            <Link href="/settings/api-connections">
+              <Button size="sm" variant="outline" className="gap-1 h-7 px-3 text-xs border-primary/30 text-primary hover:bg-primary/10">
+                Manage All <ArrowRight size={11} />
+              </Button>
+            </Link>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4">
-            {ppc.platforms.map((p, i) => (
-              <Card key={i} className={`border-border/60 bg-card ${p.status === "connected" ? "border-green-500/20" : ""}`} data-testid={`platform-${i}`}>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-muted/30 flex items-center justify-center text-xs font-bold">{p.name.slice(0, 2)}</div>
-                    <div>
-                      <p className="font-medium text-sm">{p.name}</p>
-                      <p className={`text-xs ${p.status === "connected" ? "text-green-400" : "text-muted-foreground"}`}>{p.status === "connected" ? "Connected" : "Not connected"}</p>
+            {[
+              { name: "Google Ads", status: "connected", accountId: "123-456-7890", lastSync: "2 min ago", dailyCalls: 8420, callLimit: 15000, docsUrl: "https://developers.google.com/google-ads/api/docs/start" },
+              { name: "Meta Ads", status: "connected", accountId: "act_98765432", lastSync: "5 min ago", dailyCalls: 3210, callLimit: 10000, docsUrl: "https://developers.facebook.com/docs/marketing-apis/" },
+              { name: "LinkedIn Ads", status: "connected", accountId: "506123456", lastSync: "18 min ago", dailyCalls: 940, callLimit: 5000, docsUrl: "https://learn.microsoft.com/en-us/linkedin/marketing/" },
+              { name: "Microsoft Ads", status: "disconnected", accountId: null, lastSync: null, dailyCalls: 0, callLimit: 0, docsUrl: "https://learn.microsoft.com/en-us/advertising/guides/" },
+              { name: "TikTok for Business", status: "disconnected", accountId: null, lastSync: null, dailyCalls: 0, callLimit: 0, docsUrl: "https://ads.tiktok.com/marketing_api/docs" },
+            ].map((p, i) => {
+              const usagePct = p.callLimit ? Math.round((p.dailyCalls / p.callLimit) * 100) : 0;
+              return (
+                <Card
+                  key={i}
+                  className={`border-border/60 bg-card ${p.status === "connected" ? "border-green-500/20" : ""}`}
+                  data-testid={`platform-${i}`}
+                >
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-muted/30 border border-border/60 flex items-center justify-center text-xs font-bold text-primary">
+                          {p.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{p.name}</p>
+                          {p.status === "connected"
+                            ? <p className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={10} /> Connected · {p.accountId}</p>
+                            : <p className="text-xs text-muted-foreground flex items-center gap-1"><XCircle size={10} /> Not connected</p>
+                          }
+                        </div>
+                      </div>
+                      <a href={p.docsUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors" title="API Docs">
+                        <ExternalLink size={13} />
+                      </a>
                     </div>
-                  </div>
-                  {p.status === "connected" ? <CheckCircle size={16} className="text-green-400" /> : <Button size="sm" variant="outline" data-testid={`btn-connect-${i}`}>Connect</Button>}
-                </CardContent>
-              </Card>
-            ))}
+
+                    {p.status === "connected" && p.callLimit > 0 && (
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">API calls today</span>
+                          <span className={usagePct > 80 ? "text-amber-400" : "text-muted-foreground"}>
+                            {p.dailyCalls.toLocaleString()} / {p.callLimit.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${usagePct > 80 ? "bg-amber-400" : "bg-primary"}`}
+                            style={{ width: `${usagePct}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Last sync: {p.lastSync}</p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2">
+                      {p.status === "connected" && (
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" data-testid={`btn-sync-ppc-${i}`}>
+                          <RefreshCw size={11} /> Sync
+                        </Button>
+                      )}
+                      <Link href="/settings/api-connections">
+                        <Button size="sm" variant="outline" className="h-7 px-3 text-xs gap-1" data-testid={`btn-configure-ppc-${i}`}>
+                          {p.status === "connected" ? "Configure" : "Connect"}
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
       </Tabs>

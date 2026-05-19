@@ -43,6 +43,7 @@ import AISettings from "@/pages/app/settings/AI";
 import Governance from "@/pages/app/settings/Governance";
 import Brand from "@/pages/app/settings/Brand";
 import Audit from "@/pages/app/settings/Audit";
+import ApiConnections from "@/pages/app/settings/ApiConnections";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,6 +109,7 @@ function Router() {
       <Route path="/settings/governance"><ProtectedRoute component={Governance} /></Route>
       <Route path="/settings/brand"><ProtectedRoute component={Brand} /></Route>
       <Route path="/settings/audit"><ProtectedRoute component={Audit} /></Route>
+      <Route path="/settings/api-connections"><ProtectedRoute component={ApiConnections} /></Route>
 
       <Route component={NotFound} />
     </Switch>

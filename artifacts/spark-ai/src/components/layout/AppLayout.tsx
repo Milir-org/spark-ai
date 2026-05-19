@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Wand2, Megaphone, Brain, MonitorPlay, Search, Share2, Palette,
   Mail, MessageSquare, BarChart3, Plug, CheckSquare, FileText, FolderOpen,
   Settings, Building2, Users, Shield, CreditCard, Bot, Lock, Tag, ScrollText,
-  ChevronDown, ChevronRight, Bell, LogOut, ChevronLeft
+  ChevronDown, ChevronRight, Bell, LogOut, ChevronLeft, KeyRound
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -178,6 +178,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         { label: "AI Settings", href: "/settings/ai", icon: <Bot size={16} /> },
         { label: "Governance", href: "/settings/governance", icon: <Lock size={16} />, locked: plan === "starter" || plan === "growth" },
         { label: "Brand Rules", href: "/settings/brand", icon: <Tag size={16} /> },
+        { label: "API Connections", href: "/settings/api-connections", icon: <KeyRound size={16} /> },
         { label: "Audit Logs", href: "/settings/audit", icon: <ScrollText size={16} />, locked: plan === "starter" || plan === "growth" },
       ],
     },
