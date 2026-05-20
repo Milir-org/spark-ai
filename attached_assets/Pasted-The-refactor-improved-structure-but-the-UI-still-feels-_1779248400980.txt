@@ -1,0 +1,67 @@
+The refactor improved structure, but the UI still feels like a generic admin dashboard built from default cards, tabs, tables, and modal forms.
+
+Do not iterate on the current visual style.
+Redesign the PPC module with a distinct premium SaaS visual language.
+
+Main issues to fix:
+1. The overview is too table-first and operational.
+2. The campaign builder still feels like a form modal, not a flagship workspace.
+3. The AI layer feels bolted on instead of central.
+4. The page relies too heavily on default shadcn-style cards, badges, and tabs.
+5. The product lacks a signature visual identity and a strong command-center feel.
+
+New direction:
+
+1. PPC Overview
+- Create a more intentional command-center layout.
+- Use a stronger top summary band with one dominant insight area, not just 4 equal KPI cards.
+- Reduce visual clutter from repetitive cards and default bordered boxes.
+- Keep campaign list, but make it secondary to priorities, AI opportunities, and operational health.
+- Replace flat “dashboard cards everywhere” feel with a more curated layout.
+
+2. Campaign Workspace
+- Replace the modal dialog with a full-page or nearly full-page workspace experience.
+- It should feel like entering a dedicated campaign design mode.
+- Use a split layout with:
+  - left: main step content
+  - right: SPARK guidance / readiness / contextual recommendations
+- Increase whitespace, reduce borders, and make each step feel more substantial.
+- Avoid the look of a standard form wizard.
+
+3. Visual Language
+- Stop relying on default shadcn dashboard patterns.
+- Create a more premium SaaS atmosphere with:
+  - stronger typography hierarchy
+  - cleaner spacing
+  - fewer visible borders
+  - more intentional surfaces
+  - subtle gradients or tonal depth
+  - less “box inside box inside box”
+- The product should feel strategic, modern, and AI-native.
+
+4. AI-Native UX
+- SPARK Brain should feel central to the experience.
+- It should not read like a generic sidebar helper.
+- Make the workspace feel like the campaign is being co-designed with AI, not just manually filled in.
+
+5. Interaction Design
+- One primary action per screen.
+- Fewer small secondary buttons.
+- Reduce badge overload.
+- Reduce noisy alert strips.
+- Make the next step obvious and calming.
+
+6. Emotional Goal
+The user should feel:
+- guided
+- safe
+- focused
+- in control
+
+Not:
+- crowded
+- administratively burdened
+- trapped in a dashboard
+
+This is now a design problem, not just a layout problem.
+Do a real UX redesign, not another cleanup pass.
