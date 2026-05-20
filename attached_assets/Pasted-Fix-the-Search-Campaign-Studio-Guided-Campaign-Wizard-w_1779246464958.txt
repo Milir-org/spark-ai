@@ -1,0 +1,196 @@
+Fix the Search Campaign Studio Guided Campaign Wizard workflow.
+
+The current wizard is missing campaign basics, does not reset correctly when starting a new campaign, and does not separate new campaign, edit campaign, and resume draft modes.
+
+Core rule:
+Clicking “Start Guided Campaign” must always start a fresh new campaign unless the user explicitly clicks “Resume Draft” or “Edit” from an existing campaign.
+
+Add clear wizard modes:
+1. create
+2. edit
+3. resume
+
+Create mode:
+- starts with empty form fields
+- generates a new draft ID
+- starts at step 0
+- button label should be “Save New Draft”
+
+Edit mode:
+- loads an existing campaign
+- keeps existing campaign ID
+- pre-fills the form
+- button label should be “Save Changes”
+- shows change summary and approval impact
+
+Resume mode:
+- loads saved draft
+- continues from last saved step
+- button label should be “Update Draft”
+
+Add this first wizard step:
+
+Step 1: Campaign Basics
+Fields:
+- Campaign name, required
+- Campaign description
+- Campaign source:
+  - New SPARK guided campaign
+  - Linked to master campaign
+  - Ad-hoc campaign
+- Optional parent SPARK campaign
+- Campaign owner
+- Marketing tags
+- Internal notes
+
+Update wizard steps to:
+1. Campaign Basics
+2. Goal
+3. Offer & Audience
+4. Platforms & Budget
+5. Keywords & Search Intent
+6. Ads & Extensions
+7. Launch Plan
+8. Review & Approval
+
+State management requirements:
+- Create a getInitialWizardForm() function.
+- Create a resetWizardState() function.
+- When “Start Guided Campaign” is clicked, call resetWizardState("create").
+- Do not reuse old form values when creating a new campaign.
+- Do not auto-load the latest campaign into the wizard.
+- Only load existing campaign data when user clicks Edit.
+- Only load draft data when user clicks Resume Draft.
+
+Implementation detail:
+Currently GuidedWizard holds internal state and stays mounted even when Dialog is closed. Closing the modal does not clear React state. Fix this either by:
+1. resetting state whenever open changes from false to true in create mode, or
+2. passing a unique key to GuidedWizard when starting a new campaign, or
+3. lifting wizard state to the parent and explicitly resetting it.
+
+Preferred:
+Use a wizardSessionId that changes every time a new campaign starts:
+<GuidedWizard key={wizardSessionId} mode={wizardMode} selectedCampaign={selectedCampaign} ... />
+
+Add parent state:
+- wizardMode: "create" | "edit" | "resume"
+- selectedCampaign
+- wizardSessionId
+
+Start Guided Campaign button:
+- setWizardMode("create")
+- setSelectedCampaign(null)
+- setWizardSessionId(Date.now().toString())
+- setShowGuided(true)
+
+Edit campaign action:
+- setWizardMode("edit")
+- setSelectedCampaign(campaign)
+- setWizardSessionId(`edit-${campaign.id}-${Date.now()}`)
+- setShowGuided(true)
+
+Add a separate “Resume Last Draft” button only if a draft exists.
+Do not automatically resume old draft when user clicks Start Guided Campaign.
+
+Keyword step requirements:
+In the Keywords & Search Intent step, add AI action buttons:
+- Suggest Keywords with AI
+- Suggest Negative Keywords with AI
+- Group Keywords by Intent
+- Estimate CPC / Bid Forecast
+- Regenerate Keyword Plan
+
+When user clicks Suggest Keywords with AI, generate realistic mock suggestions based on:
+- campaign name
+- primary goal
+- product/service
+- target geography
+- selected platforms
+- landing page
+- search intent
+
+Suggested keyword groups:
+- Brand
+- High Intent
+- Product / Service
+- Local Intent
+- Competitor
+- Informational
+- Negative Keywords
+
+Each suggested keyword should show:
+- keyword
+- intent group
+- suggested match type
+- estimated CPC range
+- competition level
+- platform suitability
+- accept/reject control
+
+Negative keyword suggestions should be shown separately and should include:
+- free
+- jobs
+- salary
+- template
+- tutorial
+- course
+- examples
+- DIY
+- cheap
+- review
+Use smarter mock suggestions based on product context.
+
+SPARK Brain requirements:
+The SPARK Brain panel should become action-oriented.
+At each step, it should show:
+- summary of current choices
+- missing information
+- risks
+- suggested next action
+- contextual action buttons
+
+Example buttons:
+Campaign Basics:
+- Suggest campaign name
+- Improve description
+
+Goal:
+- Recommend primary goal
+- Add sensible guardrails
+
+Platforms & Budget:
+- Recommend platform mix
+- Allocate budget
+
+Keywords:
+- Suggest keywords
+- Suggest negative keywords
+- Estimate CPC
+
+Ads:
+- Generate ad copy
+- Generate extensions
+
+Launch Plan:
+- Check launch readiness
+
+Ad copy requirements:
+Keep ad copy generation inside Ads & Extensions only.
+Do not show ad copy generation as a top-level button.
+
+Final review screen:
+Show:
+- campaign name
+- primary goal
+- secondary goals
+- selected platforms
+- budget allocation
+- keyword groups
+- ad copy preview
+- tracking checklist
+- launch readiness score
+- approval requirements
+- buttons: Save New Draft, Request Approval, Create Platform Drafts, Simulate Launch
+
+Do not make the wizard feel like Google Ads.
+Make it feel like SPARK is guiding a non-PPC expert through campaign creation.
