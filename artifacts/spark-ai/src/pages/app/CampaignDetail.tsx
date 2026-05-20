@@ -9,21 +9,20 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, CheckCircle, Clock, SendHorizonal, AlertTriangle,
-  Target, Globe, DollarSign, Zap, BarChart2, Shield,
-  Hash, TrendingUp, AlertCircle, Info, Sparkles, ChevronRight,
+  Target, Globe, DollarSign, Sparkles, AlertCircle, Info,
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
-  draft:             { bg: "bg-muted/30",        text: "text-muted-foreground", dot: "bg-muted-foreground/50" },
-  planning:          { bg: "bg-blue-500/10",      text: "text-blue-300",         dot: "bg-blue-400" },
-  awaiting_approval: { bg: "bg-amber-500/10",     text: "text-amber-300",        dot: "bg-amber-400" },
-  ready_to_launch:   { bg: "bg-emerald-500/10",   text: "text-emerald-300",      dot: "bg-emerald-400" },
-  active:            { bg: "bg-emerald-500/10",   text: "text-emerald-300",      dot: "bg-emerald-400" },
-  optimising:        { bg: "bg-primary/10",       text: "text-primary",          dot: "bg-primary" },
-  paused:            { bg: "bg-muted/30",         text: "text-muted-foreground", dot: "bg-muted-foreground/50" },
-  completed:         { bg: "bg-muted/20",         text: "text-muted-foreground/60", dot: "bg-muted-foreground/30" },
+  draft:             { bg: "bg-white/[0.04]",       text: "text-muted-foreground",    dot: "bg-muted-foreground/40" },
+  planning:          { bg: "bg-blue-500/10",         text: "text-blue-300",            dot: "bg-blue-400" },
+  awaiting_approval: { bg: "bg-amber-500/10",        text: "text-amber-300",           dot: "bg-amber-400" },
+  ready_to_launch:   { bg: "bg-emerald-500/10",      text: "text-emerald-300",         dot: "bg-emerald-400" },
+  active:            { bg: "bg-emerald-500/10",      text: "text-emerald-300",         dot: "bg-emerald-400" },
+  optimising:        { bg: "bg-primary/10",          text: "text-primary",             dot: "bg-primary" },
+  paused:            { bg: "bg-white/[0.04]",        text: "text-muted-foreground",    dot: "bg-muted-foreground/40" },
+  completed:         { bg: "bg-white/[0.03]",        text: "text-muted-foreground/50", dot: "bg-muted-foreground/20" },
 };
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -50,75 +49,80 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function RadialGauge({ score, label, size = 80 }: { score: number; label: string; size?: number }) {
-  const r = (size / 2) - 6;
+function RadialGauge({ score, label, size = 88 }: { score: number; label: string; size?: number }) {
+  const r = (size / 2) - 7;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
   const strokeColor = score >= 80 ? "stroke-emerald-400" : score >= 60 ? "stroke-amber-400" : "stroke-red-400";
   const textColor   = score >= 80 ? "text-emerald-400"  : score >= 60 ? "text-amber-400"  : "text-red-400";
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2.5">
       <div className="relative" style={{ width: size, height: size }}>
         <svg className="w-full h-full -rotate-90" viewBox={`0 0 ${size} ${size}`}>
-          <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth="5" className="stroke-white/[0.06]" />
-          <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth="5" className={strokeColor}
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth="5" className="stroke-white/[0.06]" />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth="5" className={strokeColor}
             strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
         </svg>
-        <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${textColor}`}>{score}%</span>
+        <span className={`absolute inset-0 flex items-center justify-center text-base font-bold ${textColor}`}>{score}%</span>
       </div>
       <p className="text-xs text-muted-foreground text-center leading-tight">{label}</p>
     </div>
   );
 }
 
-function SectionDivider() {
-  return <div className="w-full h-px bg-white/[0.05]" />;
+function Divider() {
+  return <div className="w-full h-px bg-white/[0.04]" />;
 }
 
-// ─── Blueprint Canvas ─────────────────────────────────────────────────────────
+// ─── Blueprint Canvas (read-only) ─────────────────────────────────────────────
 
 function BlueprintCanvas({ bp }: { bp: any }) {
   if (!bp) return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-5">
-        <Sparkles size={20} className="text-muted-foreground/40" />
+    <div className="flex flex-col items-center justify-center py-28 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mb-6">
+        <Sparkles size={20} className="text-muted-foreground/30" />
       </div>
-      <p className="text-muted-foreground text-sm font-medium">No blueprint generated yet</p>
-      <p className="text-xs text-muted-foreground/50 mt-1.5 max-w-xs">Open the PPC Blueprint Studio to generate a campaign strategy.</p>
+      <p className="text-muted-foreground font-medium">No blueprint generated yet</p>
+      <p className="text-sm text-muted-foreground/50 mt-2 max-w-xs leading-relaxed">
+        Open the PPC Blueprint Studio to generate a campaign strategy.
+      </p>
     </div>
   );
 
   return (
-    <div className="space-y-14">
+    <div className="space-y-16">
 
       {/* Strategic Angle */}
       {bp.strategicAngle && (
-        <section>
-          <div className="flex items-center gap-2 mb-6">
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
             <Sparkles size={13} className="text-primary" />
-            <p className="text-[11px] font-bold text-primary uppercase tracking-widest">Strategic Angle</p>
+            <p className="text-xs font-medium text-primary/70 uppercase tracking-widest">Strategic Angle</p>
           </div>
-          <p className="text-xl leading-relaxed text-foreground/85 font-light">
+          <p className="text-xl leading-[1.75] text-foreground/80 font-light">
             {bp.strategicAngle}
           </p>
         </section>
       )}
 
-      <SectionDivider />
+      {bp.strategicAngle && <Divider />}
 
       {/* Platform Strategy */}
       {bp.platformStrategy?.length > 0 && (
-        <section>
-          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-7">Platform Strategy</p>
+        <section className="space-y-7">
+          <div>
+            <p className="text-sm font-semibold text-foreground/60 mb-1">Platform Strategy</p>
+            <p className="text-xs text-muted-foreground">Budget allocation across ad networks.</p>
+          </div>
           <div className="space-y-4">
             {bp.platformStrategy.map((p: any) => (
-              <div key={p.name} className={`p-6 rounded-2xl border ${p.recommended ? "border-white/[0.08] bg-white/[0.015]" : "border-white/[0.04] opacity-60"}`}>
-                <div className="flex items-start gap-4 mb-4">
+              <div key={p.name} className={`p-7 rounded-2xl border ${p.recommended ? "border-white/[0.07] bg-white/[0.015]" : "border-white/[0.03] opacity-55"}`}>
+                <div className="flex items-start gap-4 mb-5">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <p className="font-semibold text-base">{p.name}</p>
+                    <div className="flex items-center gap-2.5 mb-2.5">
+                      <p className="font-semibold text-lg">{p.name}</p>
                       {p.recommended && (
-                        <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/[0.07]">
+                        <span className="text-xs font-medium px-2.5 py-0.5 rounded-full border border-primary/15 text-primary/70 bg-primary/[0.06]">
                           Recommended
                         </span>
                       )}
@@ -126,8 +130,8 @@ function BlueprintCanvas({ bp }: { bp: any }) {
                     <p className="text-sm text-muted-foreground leading-relaxed">{p.rationale}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-3xl font-bold">{p.budgetPct}%</p>
-                    <p className="text-xs text-muted-foreground">of budget</p>
+                    <p className="text-4xl font-bold">{p.budgetPct}%</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">of budget</p>
                   </div>
                 </div>
                 <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
@@ -139,24 +143,27 @@ function BlueprintCanvas({ bp }: { bp: any }) {
         </section>
       )}
 
-      {bp.platformStrategy?.length > 0 && <SectionDivider />}
+      {bp.platformStrategy?.length > 0 && bp.keywordThemes?.length > 0 && <Divider />}
 
       {/* Keyword Themes */}
       {bp.keywordThemes?.length > 0 && (
-        <section>
-          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-7">Keyword Themes</p>
+        <section className="space-y-7">
+          <div>
+            <p className="text-sm font-semibold text-foreground/60 mb-1">Keyword Themes</p>
+            <p className="text-xs text-muted-foreground">Strategic clusters approved for this campaign.</p>
+          </div>
           <div className="space-y-4">
             {bp.keywordThemes.map((t: any) => {
               const ic = INTENT_COLORS[t.intent] ?? INTENT_COLORS.Informational;
               return (
-                <div key={t.id ?? t.name} className="p-5 rounded-2xl border border-white/[0.07] bg-white/[0.01]">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${ic}`}>{t.intent}</span>
+                <div key={t.id ?? t.name} className="p-6 rounded-2xl border border-white/[0.06] bg-white/[0.01]">
+                  <div className="flex items-center gap-3 mb-5">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ic}`}>{t.intent}</span>
                     <span className="font-medium text-sm">{t.name}</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {(t.keywords ?? []).map((kw: string) => (
-                      <span key={kw} className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.05] text-foreground/65 font-mono">
+                      <span key={kw} className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.04] text-foreground/60 font-mono">
                         {kw}
                       </span>
                     ))}
@@ -168,20 +175,23 @@ function BlueprintCanvas({ bp }: { bp: any }) {
         </section>
       )}
 
-      {bp.keywordThemes?.length > 0 && bp.negativeKeywordThemes?.length > 0 && <SectionDivider />}
+      {bp.keywordThemes?.length > 0 && bp.negativeKeywordThemes?.length > 0 && <Divider />}
 
       {/* Negative Keywords */}
       {bp.negativeKeywordThemes?.length > 0 && (
-        <section>
-          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-7">Negative Keyword Themes</p>
+        <section className="space-y-7">
+          <div>
+            <p className="text-sm font-semibold text-foreground/60 mb-1">Negative Keyword Themes</p>
+            <p className="text-xs text-muted-foreground">Confirmed exclusion lists protecting budget from non-commercial intent.</p>
+          </div>
           <div className="space-y-3">
             {bp.negativeKeywordThemes.map((t: any) => (
-              <div key={t.id ?? t.name} className="p-5 rounded-2xl border border-white/[0.06] bg-white/[0.01]">
-                <p className="font-medium text-sm mb-1.5">{t.name}</p>
-                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{t.rationale}</p>
+              <div key={t.id ?? t.name} className="p-6 rounded-2xl border border-white/[0.05] bg-white/[0.01]">
+                <p className="font-medium text-sm mb-2">{t.name}</p>
+                <p className="text-xs text-muted-foreground mb-4 leading-relaxed">{t.rationale}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {(t.terms ?? []).map((term: string) => (
-                    <span key={term} className="text-[11px] px-2.5 py-1 rounded-full bg-red-400/[0.07] border border-red-400/15 text-red-400/70 font-mono">{term}</span>
+                    <span key={term} className="text-xs px-2.5 py-1 rounded-full bg-red-400/[0.06] border border-red-400/12 text-red-400/60 font-mono">{term}</span>
                   ))}
                 </div>
               </div>
@@ -190,70 +200,62 @@ function BlueprintCanvas({ bp }: { bp: any }) {
         </section>
       )}
 
-      {bp.negativeKeywordThemes?.length > 0 && bp.adDirection && <SectionDivider />}
+      {bp.negativeKeywordThemes?.length > 0 && bp.adDirection && <Divider />}
 
       {/* Ad Direction */}
       {bp.adDirection && (
-        <section>
-          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-7">Ad Direction</p>
-          <div className="space-y-8">
-            {bp.adDirection.angle && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Creative Angle</p>
-                <p className="text-base leading-relaxed text-foreground/85">{bp.adDirection.angle}</p>
-              </div>
-            )}
-            {bp.adDirection.tone && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tone</p>
-                <p className="text-sm text-foreground/70 leading-relaxed">{bp.adDirection.tone}</p>
-              </div>
-            )}
-            {bp.adDirection.headlines?.length > 0 && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Headlines</p>
-                <div className="space-y-2">
-                  {bp.adDirection.headlines.map((h: string, i: number) => (
-                    <div key={i} className="px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] font-medium text-sm">{h}</div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {bp.adDirection.descriptions?.length > 0 && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Descriptions</p>
-                <div className="space-y-2">
-                  {bp.adDirection.descriptions.map((d: string, i: number) => (
-                    <div key={i} className="px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-sm text-foreground/65 leading-relaxed">{d}</div>
-                  ))}
-                </div>
-              </div>
-            )}
+        <section className="space-y-9">
+          <div>
+            <p className="text-sm font-semibold text-foreground/60 mb-1">Ad Direction</p>
+            <p className="text-xs text-muted-foreground">Creative brief for this campaign.</p>
           </div>
+          {bp.adDirection.angle && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground/50 uppercase tracking-wider mb-4">Creative Angle</p>
+              <p className="text-base leading-relaxed text-foreground/80">{bp.adDirection.angle}</p>
+            </div>
+          )}
+          {bp.adDirection.tone && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground/50 uppercase tracking-wider mb-4">Tone of Voice</p>
+              <p className="text-sm text-foreground/65 leading-relaxed">{bp.adDirection.tone}</p>
+            </div>
+          )}
+          {bp.adDirection.headlines?.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground/50 uppercase tracking-wider mb-4">Headlines</p>
+              <div className="space-y-2">
+                {bp.adDirection.headlines.map((h: string, i: number) => (
+                  <div key={i} className="px-5 py-3.5 rounded-xl bg-white/[0.03] border border-white/[0.05] font-medium text-sm">{h}</div>
+                ))}
+              </div>
+            </div>
+          )}
+          {bp.adDirection.descriptions?.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground/50 uppercase tracking-wider mb-4">Descriptions</p>
+              <div className="space-y-2">
+                {bp.adDirection.descriptions.map((d: string, i: number) => (
+                  <div key={i} className="px-5 py-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-sm text-foreground/60 leading-relaxed">{d}</div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
-      {bp.adDirection && (bp.trackingPlan || bp.executionChecklist?.length > 0) && <SectionDivider />}
+      {bp.adDirection && bp.trackingPlan && <Divider />}
 
       {/* Tracking */}
       {bp.trackingPlan && (
-        <section>
-          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-5">Tracking & Measurement</p>
-          <p className="text-sm text-foreground/75 leading-relaxed">{bp.trackingPlan}</p>
-        </section>
-      )}
-
-      {/* Execution checklist */}
-      {bp.executionChecklist?.length > 0 && (
-        <section>
-          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-5">Execution Checklist</p>
-          <div className="space-y-3">
-            {bp.executionChecklist.map((item: string, i: number) => (
-              <div key={i} className="flex items-start gap-3">
-                <CheckCircle size={14} className="text-emerald-400 mt-0.5 shrink-0" />
-                <span className="text-sm leading-relaxed text-foreground/80">{item}</span>
-              </div>
-            ))}
+        <section className="space-y-5">
+          <div>
+            <p className="text-sm font-semibold text-foreground/60 mb-1">Tracking & Measurement</p>
+            <p className="text-xs text-muted-foreground">Conversion setup required before launch.</p>
+          </div>
+          <div className="p-6 rounded-2xl border border-white/[0.06] bg-white/[0.015]">
+            <p className="text-xs font-medium text-muted-foreground/50 uppercase tracking-wider mb-3">Implementation Notes</p>
+            <p className="text-sm text-foreground/75 leading-relaxed">{bp.trackingPlan}</p>
           </div>
         </section>
       )}
@@ -261,29 +263,29 @@ function BlueprintCanvas({ bp }: { bp: any }) {
       {/* Risks + Assumptions */}
       {(bp.risks?.length > 0 || bp.assumptions?.length > 0) && (
         <>
-          <SectionDivider />
-          <div className="grid md:grid-cols-2 gap-8">
+          <Divider />
+          <div className="grid md:grid-cols-2 gap-10">
             {bp.risks?.length > 0 && (
-              <section>
-                <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-5">Risks</p>
+              <section className="space-y-5">
+                <p className="text-sm font-semibold text-foreground/60">Risks</p>
                 <div className="space-y-3">
                   {bp.risks.map((r: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2.5">
+                    <div key={i} className="flex items-start gap-3">
                       <AlertTriangle size={13} className="text-amber-400 mt-0.5 shrink-0" />
-                      <span className="text-sm text-foreground/75 leading-snug">{r}</span>
+                      <span className="text-sm text-foreground/70 leading-snug">{r}</span>
                     </div>
                   ))}
                 </div>
               </section>
             )}
             {bp.assumptions?.length > 0 && (
-              <section>
-                <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-5">Assumptions</p>
+              <section className="space-y-5">
+                <p className="text-sm font-semibold text-foreground/60">Assumptions</p>
                 <div className="space-y-3">
                   {bp.assumptions.map((a: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2.5">
+                    <div key={i} className="flex items-start gap-3">
                       <Info size={13} className="text-blue-400 mt-0.5 shrink-0" />
-                      <span className="text-sm text-foreground/75 leading-snug">{a}</span>
+                      <span className="text-sm text-foreground/70 leading-snug">{a}</span>
                     </div>
                   ))}
                 </div>
@@ -292,7 +294,6 @@ function BlueprintCanvas({ bp }: { bp: any }) {
           </div>
         </>
       )}
-
     </div>
   );
 }
@@ -319,82 +320,84 @@ function StatusSidebar({ campaign, providerDrafts, bp, onSubmit, submitting }: {
   const doneCount = approvalSteps.filter((s) => s.done).length;
   const pct = Math.round((doneCount / approvalSteps.length) * 100);
 
-  const kpis = [
-    { label: "Budget", value: `$${campaign.budget.toLocaleString()}`, sub: campaign.dailyBudget ? `$${campaign.dailyBudget.toLocaleString()}/day` : null },
-    { label: "Spend", value: campaign.spend != null ? `$${campaign.spend.toLocaleString()}` : "—", sub: campaign.spend && campaign.budget ? `${((campaign.spend / campaign.budget) * 100).toFixed(0)}% used` : null },
-    { label: "Leads", value: campaign.leadsGenerated != null ? campaign.leadsGenerated.toLocaleString() : "—", sub: null },
-    { label: "Health", value: campaign.healthScore != null ? `${campaign.healthScore}/100` : "—", sub: null },
-  ];
+  // Hard blockers — things that prevent submission
+  const blockers: { msg: string; error: boolean }[] = [];
+  if (!bp) blockers.push({ msg: "No blueprint generated yet", error: true });
+  if (providerDrafts.length > 0 && !providerDrafts.some((d: any) => d.status === "draft_ready")) {
+    blockers.push({ msg: "No provider drafts ready", error: false });
+  }
+  providerDrafts.forEach((d: any) => {
+    (d.validationIssues ?? []).filter((i: any) => i.severity === "error").forEach((issue: any) => {
+      blockers.push({ msg: `${PROVIDER_LABELS[d.provider] ?? d.provider}: ${issue.message}`, error: true });
+    });
+  });
+
+  const hasHardBlockers = blockers.some((b) => b.error) && canSubmit;
 
   return (
-    <div className="w-72 shrink-0 sticky top-[73px] max-h-[calc(100vh-73px)] flex flex-col overflow-y-auto">
-      <div className="p-6 space-y-8">
+    <div className="w-80 shrink-0 sticky top-[65px] max-h-[calc(100vh-65px)] flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto p-7 space-y-9">
 
         {/* Campaign meta */}
-        <div>
-          <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-4">Campaign Details</p>
-          <div className="space-y-2.5 text-sm">
+        <div className="space-y-4">
+          <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest">Campaign Details</p>
+          <div className="space-y-3">
             {[
-              { label: "Objective", value: ((campaign.primaryObjective ?? campaign.objective) as string).replace(/_/g, " ") },
-              { label: "Channels", value: (campaign.channels as string[]).join(", ") },
-              { label: "Pacing", value: campaign.spendStyle ?? "balanced" },
-              campaign.geography ? { label: "Geography", value: campaign.geography } : null,
-              campaign.targetAudience ? { label: "Audience", value: campaign.targetAudience } : null,
-              campaign.landingPage ? { label: "Landing Page", value: null, mono: campaign.landingPage } : null,
-            ].filter(Boolean).map((row: any) => (
-              <div key={row.label} className="flex items-start gap-2 justify-between">
-                <span className="text-muted-foreground text-xs shrink-0 mt-0.5">{row.label}</span>
-                {row.mono ? (
-                  <span className="font-mono text-[11px] text-primary text-right truncate max-w-[140px]">{row.mono}</span>
-                ) : (
-                  <span className="font-medium text-xs text-right capitalize">{row.value}</span>
-                )}
+              { icon: Target, label: ((campaign.primaryObjective ?? campaign.objective) as string).replace(/_/g, " "), className: "capitalize" },
+              { icon: Globe, label: (campaign as any).geography || null },
+              { icon: DollarSign, label: `$${(campaign.budget / 1000).toFixed(0)}k budget` },
+            ].filter((r) => !!r.label).map((row, i) => (
+              <div key={i} className="flex items-center gap-2.5 text-sm">
+                <row.icon size={13} className="shrink-0 text-muted-foreground/35" />
+                <span className={`text-muted-foreground ${row.className ?? ""}`}>{row.label}</span>
               </div>
             ))}
+            {(campaign as any).channels?.length > 0 && (
+              <div className="flex items-center gap-2.5 text-sm">
+                <span className="w-3.5 shrink-0" />
+                <span className="text-muted-foreground">{(campaign.channels as string[]).join(", ").toUpperCase()}</span>
+              </div>
+            )}
+            {(campaign as any).landingPage && (
+              <div className="flex items-center gap-2.5 text-sm">
+                <span className="w-3.5 shrink-0" />
+                <span className="font-mono text-xs text-primary/60 truncate">{(campaign as any).landingPage}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* KPIs */}
-        <div>
-          <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-4">Metrics</p>
-          <div className="grid grid-cols-2 gap-2.5">
-            {kpis.map((k) => (
-              <div key={k.label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3" data-testid={`kpi-${k.label.toLowerCase()}`}>
-                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">{k.label}</p>
-                <p className="text-xl font-bold leading-tight">{k.value}</p>
-                {k.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{k.sub}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
+        <Divider />
 
-        {/* Provider Readiness */}
+        {/* Provider Readiness + Validation — merged section */}
         {providerDrafts.length > 0 && (
-          <div>
-            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-5">Provider Readiness</p>
-            <div className="flex items-center justify-around gap-4">
+          <div className="space-y-6">
+            <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest">Validation</p>
+
+            <div className="flex items-center justify-around">
               {providerDrafts.map((draft: any) => (
-                <div key={draft.id} className="flex flex-col items-center">
-                  <RadialGauge score={draft.readinessScore} label={PROVIDER_LABELS[draft.provider] ?? draft.provider} size={72} />
-                  {draft.validationIssues?.length > 0 && (
-                    <span className="mt-1.5 text-[10px] text-amber-400/70">{draft.validationIssues.length} issue{draft.validationIssues.length > 1 ? "s" : ""}</span>
-                  )}
-                </div>
+                <RadialGauge
+                  key={draft.id}
+                  score={draft.readinessScore}
+                  label={PROVIDER_LABELS[draft.provider] ?? draft.provider}
+                  size={88}
+                />
               ))}
             </div>
-            {/* Validation issues (compact) */}
+
+            {/* All validation issues grouped */}
             {providerDrafts.some((d: any) => d.validationIssues?.length > 0) && (
-              <div className="mt-4 space-y-2">
+              <div className="space-y-2">
                 {providerDrafts.flatMap((d: any) =>
-                  (d.validationIssues ?? []).slice(0, 3).map((issue: any, i: number) => (
-                    <div key={i} className={`flex items-start gap-2 text-[11px] p-2.5 rounded-lg ${
-                      issue.severity === "error" ? "bg-red-500/[0.08] text-red-300" :
-                      issue.severity === "warning" ? "bg-amber-500/[0.08] text-amber-300" :
-                      "bg-blue-500/[0.08] text-blue-300"
+                  (d.validationIssues ?? []).map((issue: any, i: number) => (
+                    <div key={i} className={`flex items-start gap-2 text-xs p-3 rounded-xl ${
+                      issue.severity === "error" ? "bg-red-500/[0.07] text-red-300" :
+                      issue.severity === "warning" ? "bg-amber-500/[0.07] text-amber-300" :
+                      "bg-blue-500/[0.07] text-blue-300"
                     }`}>
-                      {issue.severity === "error" ? <AlertCircle size={10} className="shrink-0 mt-0.5" /> :
-                       issue.severity === "warning" ? <AlertTriangle size={10} className="shrink-0 mt-0.5" /> :
-                       <Info size={10} className="shrink-0 mt-0.5" />}
+                      {issue.severity === "error" ? <AlertCircle size={11} className="shrink-0 mt-0.5" /> :
+                       issue.severity === "warning" ? <AlertTriangle size={11} className="shrink-0 mt-0.5" /> :
+                       <Info size={11} className="shrink-0 mt-0.5" />}
                       <span className="leading-snug">{issue.message}</span>
                     </div>
                   ))
@@ -404,27 +407,28 @@ function StatusSidebar({ campaign, providerDrafts, bp, onSubmit, submitting }: {
           </div>
         )}
 
-        {/* Approval Timeline */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">Approval Progress</p>
-            <span className="text-xs font-bold text-muted-foreground">{pct}%</span>
+        {providerDrafts.length > 0 && <Divider />}
+
+        {/* Approval progress */}
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest">Approval Progress</p>
+            <span className={`text-sm font-bold tabular-nums ${pct === 100 ? "text-emerald-400" : "text-muted-foreground"}`}>{pct}%</span>
           </div>
-          <div className="h-1 bg-white/[0.06] rounded-full mb-5 overflow-hidden">
+          <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-400" : "bg-primary"}`}
               style={{ width: `${pct}%` }}
             />
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {approvalSteps.map((step, i) => (
               <div key={i} className="flex items-center gap-2.5">
-                {step.done ? (
-                  <CheckCircle size={13} className="text-emerald-400 shrink-0" />
-                ) : (
-                  <Clock size={13} className="text-muted-foreground/30 shrink-0" />
-                )}
-                <span className={`text-xs leading-snug ${step.done ? "text-foreground/70" : "text-muted-foreground/40"}`}>
+                {step.done
+                  ? <CheckCircle size={13} className="text-emerald-400 shrink-0" />
+                  : <Clock size={13} className="text-muted-foreground/25 shrink-0" />
+                }
+                <span className={`text-xs leading-snug ${step.done ? "text-foreground/65" : "text-muted-foreground/35"}`}>
                   {step.label}
                 </span>
               </div>
@@ -432,42 +436,72 @@ function StatusSidebar({ campaign, providerDrafts, bp, onSubmit, submitting }: {
           </div>
         </div>
 
-        {/* Approval Requirements from blueprint */}
+        {/* Approval requirements from blueprint */}
         {bp?.approvalRequirements?.length > 0 && (
-          <div>
-            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-4">Required Approvals</p>
-            <div className="space-y-2.5">
-              {bp.approvalRequirements.map((req: string, i: number) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-400/50 mt-1.5 shrink-0" />
-                  <span className="text-xs text-foreground/65 leading-snug">{req}</span>
+          <>
+            <Divider />
+            <div className="space-y-4">
+              <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest">Required Approvals</p>
+              <div className="space-y-2.5">
+                {bp.approvalRequirements.map((req: string, i: number) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400/40 mt-1.5 shrink-0" />
+                    <span className="text-xs text-foreground/60 leading-snug">{req}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Blockers */}
+        {blockers.length > 0 && canSubmit && (
+          <>
+            <Divider />
+            <div className="space-y-2">
+              {blockers.map((b, i) => (
+                <div key={i} className={`flex items-start gap-2 text-xs p-3 rounded-xl ${
+                  b.error ? "bg-red-500/[0.07] text-red-300" : "bg-amber-500/[0.07] text-amber-300"
+                }`}>
+                  {b.error
+                    ? <AlertCircle size={11} className="shrink-0 mt-0.5" />
+                    : <AlertTriangle size={11} className="shrink-0 mt-0.5" />}
+                  <span className="leading-snug">{b.msg}</span>
                 </div>
               ))}
             </div>
-          </div>
+          </>
         )}
 
-        {/* Secondary Goals */}
+        {/* Secondary goals */}
         {campaign.secondaryObjectives?.length > 0 && (
-          <div>
-            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-3">Secondary Goals</p>
-            <div className="flex flex-wrap gap-1.5">
-              {(campaign.secondaryObjectives as string[]).map((g) => (
-                <span key={g} className="text-[10px] px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">{g}</span>
-              ))}
+          <>
+            <Divider />
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest">Secondary Goals</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(campaign.secondaryObjectives as string[]).map((g) => (
+                  <span key={g} className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary/80 border border-primary/15">{g}</span>
+                ))}
+              </div>
             </div>
-          </div>
+          </>
         )}
 
       </div>
 
       {/* Submit button */}
       {canSubmit && (
-        <div className="mt-auto p-5 border-t border-white/[0.06]">
+        <div className="shrink-0 p-6 border-t border-white/[0.05]">
+          {hasHardBlockers && (
+            <p className="text-xs text-muted-foreground/50 text-center mb-4">
+              Resolve blocking issues before submitting.
+            </p>
+          )}
           <button
             onClick={onSubmit}
-            disabled={submitting}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={submitting || hasHardBlockers}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-40 disabled:cursor-not-allowed"
             data-testid="btn-submit-approval"
           >
             <SendHorizonal size={14} />
@@ -502,14 +536,14 @@ export default function CampaignDetail() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
-        <Skeleton className="h-12 w-80" />
-        <div className="grid grid-cols-[1fr_288px] gap-8 mt-8">
+      <div className="p-8 space-y-6">
+        <Skeleton className="h-10 w-72" />
+        <div className="grid grid-cols-[1fr_320px] gap-10 mt-6">
           <div className="space-y-6">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-44 w-full rounded-2xl" />)}
           </div>
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full rounded-2xl" />)}
           </div>
         </div>
       </div>
@@ -518,7 +552,7 @@ export default function CampaignDetail() {
 
   if (!campaign) {
     return (
-      <div className="p-6">
+      <div className="p-8">
         <p className="text-muted-foreground text-sm">Campaign not found.</p>
       </div>
     );
@@ -531,8 +565,8 @@ export default function CampaignDetail() {
     <div className="min-h-full bg-[#0b0d14]">
 
       {/* ── Sticky Header ── */}
-      <div className="sticky top-0 z-10 bg-[#0b0d14]/95 backdrop-blur border-b border-white/[0.06]">
-        <div className="px-6 py-4 flex items-center gap-3">
+      <div className="sticky top-0 z-10 bg-[#0b0d14]/95 backdrop-blur border-b border-white/[0.05]">
+        <div className="px-7 py-4 flex items-center gap-4">
           <button
             onClick={() => setLocation("/campaigns")}
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors"
@@ -559,15 +593,15 @@ export default function CampaignDetail() {
 
       {/* ── Two-Column Body ── */}
       <div className="flex gap-0">
-        {/* Main canvas */}
-        <div className="flex-1 min-w-0 px-8 py-10">
+        {/* Main blueprint canvas */}
+        <div className="flex-1 min-w-0 px-9 py-12">
           <BlueprintCanvas bp={bp} />
 
           {!bp && (
-            <div className="mt-10 text-center">
+            <div className="mt-12 text-center">
               <button
                 onClick={() => setLocation("/channels/ppc?new=1")}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-primary/25 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-primary/20 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors"
               >
                 <Sparkles size={14} /> Open Blueprint Studio
               </button>
@@ -576,7 +610,7 @@ export default function CampaignDetail() {
         </div>
 
         {/* Status sidebar */}
-        <div className="border-l border-white/[0.06] bg-[#0c0e17]">
+        <div className="border-l border-white/[0.05] bg-[#0c0e17]">
           <StatusSidebar
             campaign={campaign}
             providerDrafts={providerDrafts}

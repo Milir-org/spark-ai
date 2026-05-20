@@ -1,0 +1,174 @@
+Refactor the SPARK PPC experience into a premium modern SaaS product with a two-speed workflow for both new marketers and expert marketers.
+
+Context:
+The repo is directionally better now, but the product still feels clumsy, dense, and too much like an internal operator console. It does not yet feel like a premium AI-native SaaS product.
+
+Current problems to fix:
+1. The UI still feels boxy, compact, and visually heavy.
+2. Important information is pushed into small text and narrow sidebars.
+3. The workflow does not clearly support both novice and expert users.
+4. Approval and provider validation feel present but not convincingly enforced.
+5. The product still feels like “structured prototype UI” rather than a flagship SaaS experience.
+
+Goal:
+Turn the PPC workflow into a flagship SPARK “Campaign Blueprint Studio” that feels:
+- premium
+- spacious
+- calm
+- strategic
+- AI-native
+- intuitive for new marketers
+- fast and controllable for expert marketers
+
+This is not a minor style pass.
+This is a UX + visual redesign of the flagship workflow.
+
+Core product model:
+Use one studio with two interaction depths:
+
+1. Guided Mode
+Default for newer marketers.
+The user gives:
+- campaign name
+- primary objective
+- optional secondary objectives
+- offer
+- geography
+- landing page
+- budget range
+
+SPARK then generates:
+- strategic angle
+- platform mix
+- keyword themes
+- negative keyword themes
+- budget allocation
+- ad direction
+- tracking plan
+- provider readiness
+- approval readiness
+
+Guided Mode should feel calm, editorial, and easy to understand.
+
+2. Expert Mode
+Optional toggle inside the same studio.
+Do not create a separate page.
+Expert Mode reveals direct controls for:
+- platform allocation
+- keyword clusters
+- negative keyword decisions
+- pacing
+- conversion priorities
+- provider-level validation details
+- approval blockers
+
+Expert Mode should feel powerful but still premium and clean.
+
+Important:
+Do not make the user choose between two different product workflows.
+Use one Blueprint Studio with progressive disclosure.
+
+Workflow requirements:
+The studio should flow like this:
+1. Intent
+2. SPARK-generated Blueprint
+3. Refine
+4. Validate
+5. Request Approval
+
+Validation must feel real:
+- approval request should not be available if required blockers exist
+- provider issues and approval blockers should be shown together in one clear validation area
+- avoid fake status theater
+
+Visual direction:
+The current design is still too clunky.
+Redesign it to feel like premium modern SaaS.
+
+Use these design rules:
+- larger typography
+- more whitespace
+- fewer visible borders
+- fewer small boxes
+- fewer cramped side panels
+- fewer dashboard-style mini cards
+- stronger layout rhythm
+- bigger section headers
+- more confidence and restraint
+- less “AWS console”
+- less “template dashboard”
+- less “box inside box inside box”
+
+The UI should feel closer to:
+- a strategic workspace
+- an AI design studio
+- a product with taste and hierarchy
+
+Avoid:
+- tiny labels everywhere
+- dense KPI tiles
+- overuse of text-xs
+- narrow sidebars carrying too much importance
+- default tab/card dashboard grammar
+- generic modal/wizard energy
+
+Flagship layout requirements:
+Redesign `PPC.tsx` as a full-page Blueprint Studio with this shape:
+
+Top:
+- large campaign title area
+- mode switch: Guided / Expert
+- status and draft state
+- one clear primary action depending on state
+
+Main canvas:
+- large editorial blueprint sections
+- SPARK output is central, not secondary
+- sections should feel like a campaign plan, not form groups
+
+Right side or lower validation rail:
+- provider draft readiness
+- approval blockers
+- tracking readiness
+- risks
+- assumptions
+
+Important:
+Do not cram too much into a narrow sidebar.
+If needed, use a wider side panel or a lower validation band.
+
+Campaign Detail requirements:
+`CampaignDetail.tsx` should visually align with the Blueprint Studio.
+It should feel like a premium control room, not a record page.
+Reduce small-font density and compact KPI clutter.
+Bring the most important campaign strategy and validation state into the main visual hierarchy.
+
+Schema / workflow requirements:
+Do not change product direction away from the current canonical flow.
+Keep:
+- NewCampaign redirect into PPC
+- Blueprint Studio as canonical creation surface
+
+But improve workflow logic:
+- `primaryObjective` should be the true canonical strategy driver
+- `secondaryObjectives` influence recommendations but do not override primary
+- approval should be gated by validation state
+- provider readiness should be derived more clearly from campaign and blueprint completeness
+
+Implementation constraints:
+- keep prototype-friendly mock behavior where needed
+- keep app runnable
+- preserve API-connected flow
+- do not regress existing campaign creation
+- if needed, break large UI into smaller components
+- maintain responsiveness on desktop/laptop
+- optimize for visual polish and workflow clarity, not just feature density
+
+Files likely to update:
+- `artifacts/spark-ai/src/pages/app/channels/PPC.tsx`
+- `artifacts/spark-ai/src/pages/app/CampaignDetail.tsx`
+- related UI helpers/components if needed
+
+Critical instruction:
+Do not just polish the existing layout.
+Do a real redesign of hierarchy, spacing, typography, and interaction model so the product feels premium, modern, and AI-native.

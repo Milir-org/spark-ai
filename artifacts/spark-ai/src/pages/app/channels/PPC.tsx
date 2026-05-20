@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -10,9 +10,10 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   Plus, CheckCircle, XCircle, AlertCircle, AlertTriangle, Loader2,
-  Brain, Sparkles, X, ThumbsUp, ThumbsDown, Globe, Hash,
+  Brain, Sparkles, X, ThumbsUp, Globe, Hash,
   Shield, DollarSign, Target, Wand2, BarChart2, Edit,
   Check, Download, TrendingUp, Eye, Zap, ArrowRight, ChevronRight,
+  Settings2, Lightbulb,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type Platform = "Google Ads" | "Microsoft Advertising" | "Baidu" | "Naver";
 type CampaignStatus = "draft" | "blueprint" | "approval" | "live" | "optimising" | "paused" | "data_check";
+type StudioMode = "guided" | "expert";
 
 interface KeywordTheme {
   id: number;
@@ -72,8 +74,8 @@ interface Campaign {
 
 const PRIMARY_GOALS = [
   { value: "leads", label: "Generate Leads", desc: "Capture contacts from interested prospects" },
-  { value: "sales", label: "Drive Sales", desc: "Direct purchase or subscription" },
-  { value: "bookings", label: "Book Appointments", desc: "Demo, call, or in-person visit" },
+  { value: "sales", label: "Drive Sales", desc: "Direct purchase or subscription conversion" },
+  { value: "bookings", label: "Book Appointments", desc: "Demo, discovery call, or in-person visit" },
   { value: "traffic", label: "Website Traffic", desc: "Awareness and top-of-funnel reach" },
   { value: "brand_protection", label: "Brand Protection", desc: "Own your branded search terms" },
   { value: "competitor_conquest", label: "Competitor Conquest", desc: "Appear on rival brand searches" },
@@ -99,13 +101,19 @@ const STATUS_CONFIG: Record<CampaignStatus, { label: string; color: string }> = 
 };
 
 const INTENT_COLORS: Record<string, { badge: string; dot: string }> = {
-  Brand:         { badge: "bg-blue-400/10 text-blue-300 border-blue-400/20",      dot: "bg-blue-400" },
+  Brand:         { badge: "bg-blue-400/10 text-blue-300 border-blue-400/20",        dot: "bg-blue-400" },
   "High Intent": { badge: "bg-emerald-400/10 text-emerald-300 border-emerald-400/20", dot: "bg-emerald-400" },
-  Product:       { badge: "bg-violet-400/10 text-violet-300 border-violet-400/20", dot: "bg-violet-400" },
-  Competitor:    { badge: "bg-red-400/10 text-red-300 border-red-400/20",          dot: "bg-red-400" },
-  Local:         { badge: "bg-cyan-400/10 text-cyan-300 border-cyan-400/20",       dot: "bg-cyan-400" },
-  Informational: { badge: "bg-slate-400/10 text-slate-300 border-slate-400/20",   dot: "bg-slate-400" },
+  Product:       { badge: "bg-violet-400/10 text-violet-300 border-violet-400/20",  dot: "bg-violet-400" },
+  Competitor:    { badge: "bg-red-400/10 text-red-300 border-red-400/20",            dot: "bg-red-400" },
+  Local:         { badge: "bg-cyan-400/10 text-cyan-300 border-cyan-400/20",         dot: "bg-cyan-400" },
+  Informational: { badge: "bg-slate-400/10 text-slate-300 border-slate-400/20",     dot: "bg-slate-400" },
 };
+
+const OPPORTUNITIES = [
+  { type: "Budget", label: "Shift $3k from Competitor → Brand. ROAS 6.1× vs 1.8×.", impact: "+$4k projected return", effort: "2 min" },
+  { type: "Negatives", label: "14 negative keywords would cut ~$1,840 wasted spend.", impact: "$1,840 saved/mo", effort: "5 min" },
+  { type: "Creative", label: "Competitor Conquest CTR is 1.9%. Benchmark: 3.5%.", impact: "+80% est. CTR", effort: "10 min" },
+];
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -156,36 +164,113 @@ function generateBlueprint(intent: CampaignIntent): GeneratedBlueprint {
   };
 }
 
-// ─── Readiness Gauge ─────────────────────────────────────────────────────────
+// ─── Radial Gauge ─────────────────────────────────────────────────────────────
 
-function RadialGauge({ score, label, size = 72 }: { score: number; label: string; size?: number }) {
-  const r = (size / 2) - 6;
+function RadialGauge({ score, label, size = 88 }: { score: number; label: string; size?: number }) {
+  const r = (size / 2) - 7;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
   const color = score >= 80 ? "stroke-emerald-400" : score >= 60 ? "stroke-amber-400" : "stroke-red-400";
   const textColor = score >= 80 ? "text-emerald-400" : score >= 60 ? "text-amber-400" : "text-red-400";
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2.5">
       <div className="relative" style={{ width: size, height: size }}>
         <svg className="w-full h-full -rotate-90" viewBox={`0 0 ${size} ${size}`}>
-          <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth="5" className="stroke-white/[0.06]" />
-          <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth="5" className={color}
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth="5" className="stroke-white/[0.06]" />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth="5" className={color}
             strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
         </svg>
-        <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${textColor}`}>{score}%</span>
+        <span className={`absolute inset-0 flex items-center justify-center text-base font-bold ${textColor}`}>{score}%</span>
       </div>
       <p className="text-xs text-muted-foreground text-center leading-tight">{label}</p>
     </div>
   );
 }
 
+// ─── Section Divider ─────────────────────────────────────────────────────────
+
+function Divider() {
+  return <div className="w-full h-px bg-white/[0.04]" />;
+}
+
+// ─── Mode Toggle ─────────────────────────────────────────────────────────────
+
+function ModeToggle({ mode, onChange }: { mode: StudioMode; onChange: (m: StudioMode) => void }) {
+  return (
+    <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+      <button
+        onClick={() => onChange("guided")}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+          mode === "guided"
+            ? "bg-white/[0.08] text-foreground shadow-sm"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <Lightbulb size={13} />
+        Guided
+      </button>
+      <button
+        onClick={() => onChange("expert")}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+          mode === "expert"
+            ? "bg-white/[0.08] text-foreground shadow-sm"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <Settings2 size={13} />
+        Expert
+      </button>
+    </div>
+  );
+}
+
+// ─── Step Indicator ───────────────────────────────────────────────────────────
+
+function StepIndicator({ phase }: { phase: "intent" | "blueprint" }) {
+  const steps = [
+    { id: "intent", label: "Intent" },
+    { id: "blueprint", label: "Blueprint" },
+    { id: "approve", label: "Approve" },
+  ];
+  const activeIdx = phase === "intent" ? 0 : 1;
+
+  return (
+    <div className="flex items-center gap-2">
+      {steps.map((step, i) => {
+        const done = i < activeIdx;
+        const active = i === activeIdx;
+        return (
+          <div key={step.id} className="flex items-center gap-2">
+            <div className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
+              active ? "text-foreground" : done ? "text-emerald-400" : "text-muted-foreground/40"
+            }`}>
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border transition-colors ${
+                active ? "border-primary bg-primary/20 text-primary"
+                : done ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                : "border-white/[0.08] text-muted-foreground/30"
+              }`}>
+                {done ? <Check size={9} /> : i + 1}
+              </span>
+              {step.label}
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`w-6 h-px transition-colors ${done ? "bg-emerald-500/30" : "bg-white/[0.06]"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Intent Canvas ────────────────────────────────────────────────────────────
 
-function IntentCanvas({ intent, setIntent, onGenerate, generating }: {
+function IntentCanvas({ intent, setIntent, onGenerate, generating, mode }: {
   intent: CampaignIntent;
   setIntent: (i: CampaignIntent) => void;
   onGenerate: () => void;
   generating: boolean;
+  mode: StudioMode;
 }) {
   const set = (k: keyof CampaignIntent, v: any) => setIntent({ ...intent, [k]: v });
   const toggleSecondary = (g: string) =>
@@ -197,27 +282,27 @@ function IntentCanvas({ intent, setIntent, onGenerate, generating }: {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-2xl mx-auto px-8 py-12 space-y-16">
+      <div className="max-w-2xl mx-auto px-8 py-14 space-y-20">
 
         {/* Campaign name */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest mb-5">Campaign Name</p>
+          <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest mb-6">Campaign Name</p>
           <input
             type="text"
             placeholder="Name this campaign…"
             value={intent.name}
             onChange={(e) => set("name", e.target.value)}
-            className="w-full bg-transparent border-0 border-b border-white/[0.08] text-4xl font-bold placeholder:text-white/[0.12] focus:outline-none focus:border-primary/30 transition-colors pb-3 leading-tight"
+            className="w-full bg-transparent border-0 border-b border-white/[0.07] text-4xl font-bold placeholder:text-white/[0.10] focus:outline-none focus:border-primary/25 transition-colors pb-4 leading-tight"
             data-testid="input-campaign-name"
           />
         </div>
 
         {/* Primary objective */}
         <div>
-          <div className="mb-6">
-            <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest mb-2">Primary Objective</p>
-            <p className="text-sm text-muted-foreground">
-              This drives every decision SPARK makes — bids, keywords, copy, and measurement.
+          <div className="mb-8">
+            <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest mb-3">Primary Objective</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              The single goal that drives every SPARK decision — bids, keywords, copy, and measurement.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -227,14 +312,14 @@ function IntentCanvas({ intent, setIntent, onGenerate, generating }: {
                 <button key={g.value} onClick={() => set("primaryGoal", g.value)}
                   className={`text-left p-6 rounded-2xl border transition-all duration-200 ${
                     active
-                      ? "border-primary/40 bg-gradient-to-br from-primary/10 to-primary/[0.04]"
-                      : "border-white/[0.06] bg-white/[0.01] hover:border-white/[0.10] hover:bg-white/[0.03]"
+                      ? "border-primary/30 bg-gradient-to-br from-primary/[0.09] to-primary/[0.03]"
+                      : "border-white/[0.05] bg-white/[0.01] hover:border-white/[0.09] hover:bg-white/[0.025]"
                   }`}>
-                  <p className={`font-semibold text-base mb-1 ${active ? "text-primary" : ""}`}>{g.label}</p>
+                  <p className={`font-semibold text-base mb-1.5 ${active ? "text-primary" : ""}`}>{g.label}</p>
                   <p className="text-sm text-muted-foreground leading-snug">{g.desc}</p>
                   {active && (
-                    <div className="mt-3 flex items-center gap-1.5 text-xs text-primary/70">
-                      <CheckCircle size={11} /> Primary objective selected
+                    <div className="mt-3 flex items-center gap-1.5 text-xs text-primary/60">
+                      <CheckCircle size={11} /> Selected
                     </div>
                   )}
                 </button>
@@ -243,81 +328,48 @@ function IntentCanvas({ intent, setIntent, onGenerate, generating }: {
           </div>
         </div>
 
-        {/* Secondary objectives */}
-        <div>
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest mb-2">Secondary Objectives</p>
-            <p className="text-sm text-muted-foreground">Optional. SPARK factors these into recommendations without overriding your primary goal.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {SECONDARY_GOALS.map((g) => {
-              const active = intent.secondaryGoals.includes(g);
-              return (
-                <button key={g} onClick={() => toggleSecondary(g)}
-                  className={`px-4 py-2 rounded-full text-sm border transition-all ${
-                    active
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-white/[0.06] text-muted-foreground hover:border-white/[0.12] hover:text-foreground"
-                  }`}>
-                  {g}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Campaign context */}
-        <div className="space-y-6">
-          <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest">Campaign Context</p>
+        {/* Campaign context — always visible */}
+        <div className="space-y-7">
+          <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest">Campaign Context</p>
 
           <div>
-            <p className="text-sm font-medium mb-2.5">What's the offer or CTA?</p>
+            <p className="text-sm font-medium text-foreground/80 mb-3">What's the offer or CTA?</p>
             <Input
               placeholder="e.g. Free 14-day trial, Book a demo, Download the guide"
               value={intent.offer}
               onChange={(e) => set("offer", e.target.value)}
-              className="h-11 bg-white/[0.02] border-white/[0.08] text-sm"
+              className="h-12 bg-white/[0.02] border-white/[0.07] text-sm"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-5">
             <div>
-              <p className="text-sm font-medium mb-2.5">Geography</p>
+              <p className="text-sm font-medium text-foreground/80 mb-3">Geography</p>
               <Input
                 placeholder="e.g. Singapore, Australia"
                 value={intent.geography}
                 onChange={(e) => set("geography", e.target.value)}
-                className="h-11 bg-white/[0.02] border-white/[0.08] text-sm"
+                className="h-12 bg-white/[0.02] border-white/[0.07] text-sm"
               />
             </div>
             <div>
-              <p className="text-sm font-medium mb-2.5">Monthly Budget ($)</p>
+              <p className="text-sm font-medium text-foreground/80 mb-3">Monthly Budget ($)</p>
               <Input
                 type="number"
                 placeholder="e.g. 15000"
                 value={intent.totalBudget}
                 onChange={(e) => set("totalBudget", e.target.value)}
-                className="h-11 bg-white/[0.02] border-white/[0.08] text-sm"
+                className="h-12 bg-white/[0.02] border-white/[0.07] text-sm"
               />
             </div>
           </div>
 
           <div>
-            <p className="text-sm font-medium mb-2.5">Who are you targeting?</p>
-            <Input
-              placeholder="e.g. Marketing managers at B2B SaaS companies, 10–200 employees"
-              value={intent.audience}
-              onChange={(e) => set("audience", e.target.value)}
-              className="h-11 bg-white/[0.02] border-white/[0.08] text-sm"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-sm font-medium">Landing Page URL</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-foreground/80">Landing Page URL</p>
               {intent.landingPage?.startsWith("http") && (
                 <span className="text-xs text-emerald-400 flex items-center gap-1">
-                  <CheckCircle size={10} /> Valid
+                  <CheckCircle size={11} /> Valid
                 </span>
               )}
             </div>
@@ -325,42 +377,96 @@ function IntentCanvas({ intent, setIntent, onGenerate, generating }: {
               placeholder="https://yoursite.com/campaign"
               value={intent.landingPage}
               onChange={(e) => set("landingPage", e.target.value)}
-              className="h-11 bg-white/[0.02] border-white/[0.08] text-sm font-mono"
+              className="h-12 bg-white/[0.02] border-white/[0.07] text-sm font-mono"
             />
           </div>
         </div>
 
-        {/* Pacing mode */}
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest mb-4">Spend Pacing</p>
-          <div className="grid grid-cols-3 gap-3">
-            {([
-              ["test", "Test", "Start slow. Learn before scaling."],
-              ["balanced", "Balanced", "Standard pacing — recommended."],
-              ["aggressive", "Aggressive", "Spend the full daily budget."],
-            ] as [string, string, string][]).map(([v, l, d]) => (
-              <button key={v} onClick={() => set("urgency", v)}
-                className={`p-5 rounded-2xl border text-left transition-all ${
-                  intent.urgency === v
-                    ? "border-primary/30 bg-primary/[0.07]"
-                    : "border-white/[0.06] bg-white/[0.01] hover:border-white/[0.10]"
-                }`}>
-                <p className={`font-semibold text-sm mb-1 ${intent.urgency === v ? "text-primary" : ""}`}>{l}</p>
-                <p className="text-xs text-muted-foreground">{d}</p>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Expert-only fields */}
+        {mode === "expert" && (
+          <>
+            <Divider />
+
+            <div className="space-y-7">
+              <div className="flex items-center gap-2 mb-2">
+                <Settings2 size={14} className="text-primary/50" />
+                <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest">Expert Controls</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-foreground/80 mb-3">Who are you targeting?</p>
+                <Input
+                  placeholder="e.g. Marketing managers at B2B SaaS companies, 10–200 employees"
+                  value={intent.audience}
+                  onChange={(e) => set("audience", e.target.value)}
+                  className="h-12 bg-white/[0.02] border-white/[0.07] text-sm"
+                />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-foreground/80 mb-3">Max CPL Target ($)</p>
+                <Input
+                  type="number"
+                  placeholder="e.g. 80"
+                  value={intent.maxCpl}
+                  onChange={(e) => set("maxCpl", e.target.value)}
+                  className="h-12 bg-white/[0.02] border-white/[0.07] text-sm"
+                />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-foreground/80 mb-2">Secondary Objectives</p>
+                <p className="text-xs text-muted-foreground mb-4">SPARK factors these in without overriding your primary goal.</p>
+                <div className="flex flex-wrap gap-2">
+                  {SECONDARY_GOALS.map((g) => {
+                    const active = intent.secondaryGoals.includes(g);
+                    return (
+                      <button key={g} onClick={() => toggleSecondary(g)}
+                        className={`px-4 py-2 rounded-full text-sm border transition-all ${
+                          active
+                            ? "border-primary/30 bg-primary/10 text-primary"
+                            : "border-white/[0.06] text-muted-foreground hover:border-white/[0.12] hover:text-foreground"
+                        }`}>
+                        {g}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-foreground/80 mb-4">Spend Pacing</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {([
+                    ["test", "Test", "Start slow. Learn before scaling."],
+                    ["balanced", "Balanced", "Standard pacing — recommended."],
+                    ["aggressive", "Aggressive", "Spend the full daily budget."],
+                  ] as [string, string, string][]).map(([v, l, d]) => (
+                    <button key={v} onClick={() => set("urgency", v)}
+                      className={`p-5 rounded-2xl border text-left transition-all ${
+                        intent.urgency === v
+                          ? "border-primary/25 bg-primary/[0.06]"
+                          : "border-white/[0.05] bg-white/[0.01] hover:border-white/[0.09]"
+                      }`}>
+                      <p className={`font-semibold text-sm mb-1 ${intent.urgency === v ? "text-primary" : ""}`}>{l}</p>
+                      <p className="text-xs text-muted-foreground">{d}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Generate CTA */}
-        <div className="pb-8">
+        <div className="pb-10">
           <button
             onClick={onGenerate}
             disabled={!canGenerate || generating}
             className={`w-full flex items-center justify-center gap-3 py-5 rounded-2xl text-base font-semibold transition-all ${
               canGenerate && !generating
                 ? "bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20"
-                : "bg-white/[0.04] text-muted-foreground cursor-not-allowed"
+                : "bg-white/[0.03] text-muted-foreground/50 cursor-not-allowed"
             }`}
             data-testid="btn-generate-blueprint"
           >
@@ -371,7 +477,7 @@ function IntentCanvas({ intent, setIntent, onGenerate, generating }: {
             )}
           </button>
           {!canGenerate && (
-            <p className="text-xs text-muted-foreground text-center mt-3">
+            <p className="text-xs text-muted-foreground/50 text-center mt-3">
               Add a campaign name and select a primary objective to continue.
             </p>
           )}
@@ -383,10 +489,11 @@ function IntentCanvas({ intent, setIntent, onGenerate, generating }: {
 
 // ─── Blueprint Canvas ─────────────────────────────────────────────────────────
 
-function BlueprintCanvas({ blueprint, intent, setBlueprint }: {
+function BlueprintCanvas({ blueprint, intent, setBlueprint, mode }: {
   blueprint: GeneratedBlueprint;
   intent: CampaignIntent;
   setBlueprint: (b: GeneratedBlueprint) => void;
+  mode: StudioMode;
 }) {
   const budget = Number(intent.totalBudget || 0);
 
@@ -397,54 +504,57 @@ function BlueprintCanvas({ blueprint, intent, setBlueprint }: {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-2xl mx-auto px-8 py-10 space-y-16">
+      <div className="max-w-2xl mx-auto px-8 py-12 space-y-18">
 
         {/* Strategic Angle */}
-        <section>
-          <div className="flex items-center gap-2 mb-6">
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
             <Sparkles size={14} className="text-primary" />
-            <p className="text-xs font-bold text-primary uppercase tracking-widest">Strategic Angle</p>
+            <p className="text-xs font-medium text-primary/70 uppercase tracking-widest">Strategic Angle</p>
           </div>
-          <p className="text-xl leading-relaxed text-foreground/90 font-light">
+          <p className="text-xl leading-[1.75] text-foreground/85 font-light">
             {blueprint.strategicAngle}
           </p>
         </section>
 
-        <div className="w-full h-px bg-white/[0.05]" />
+        <Divider />
 
         {/* Platform Strategy */}
-        <section>
-          <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest mb-8">Platform Strategy</p>
-          <div className="space-y-5">
+        <section className="space-y-8">
+          <div>
+            <p className="text-sm font-semibold text-foreground/60 mb-1">Platform Strategy</p>
+            <p className="text-xs text-muted-foreground">Budget allocation across ad networks, ranked by strategic priority.</p>
+          </div>
+          <div className="space-y-4">
             {blueprint.platforms.map((p) => {
               const alloc = budget ? Math.round(budget * p.budgetPct / 100) : null;
               const connected = PLATFORM_CONN[p.name] ?? false;
               return (
-                <div key={p.name} className={`p-6 rounded-2xl border transition-all ${
+                <div key={p.name} className={`p-7 rounded-2xl border transition-all ${
                   p.recommended
-                    ? "border-white/[0.08] bg-white/[0.02]"
-                    : "border-white/[0.04] opacity-60"
+                    ? "border-white/[0.07] bg-white/[0.015]"
+                    : "border-white/[0.03] opacity-55"
                 }`}>
-                  <div className="flex items-start gap-4 mb-4">
+                  <div className="flex items-start gap-4 mb-5">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2.5 mb-2">
+                      <div className="flex items-center gap-2.5 mb-2.5">
                         <p className="font-semibold text-lg">{p.name}</p>
                         {p.recommended && (
-                          <span className="text-[11px] px-2.5 py-0.5 rounded-full border border-primary/25 text-primary bg-primary/[0.07] font-semibold">
+                          <span className="text-xs px-2.5 py-0.5 rounded-full border border-primary/20 text-primary/80 bg-primary/[0.06] font-medium">
                             Recommended
                           </span>
                         )}
                         {!connected && (
-                          <span className="text-[11px] text-amber-400/70 flex items-center gap-1">
-                            <AlertTriangle size={10} /> Not connected
+                          <span className="text-xs text-amber-400/60 flex items-center gap-1">
+                            <AlertTriangle size={11} /> Not connected
                           </span>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground leading-relaxed">{p.rationale}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-3xl font-bold text-foreground">{p.budgetPct}%</p>
-                      {alloc && <p className="text-sm text-muted-foreground">${alloc.toLocaleString()}/mo</p>}
+                      <p className="text-4xl font-bold text-foreground">{p.budgetPct}%</p>
+                      {alloc && <p className="text-sm text-muted-foreground mt-0.5">${alloc.toLocaleString()}/mo</p>}
                     </div>
                   </div>
                   <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
@@ -459,19 +569,23 @@ function BlueprintCanvas({ blueprint, intent, setBlueprint }: {
           </div>
         </section>
 
-        <div className="w-full h-px bg-white/[0.05]" />
+        <Divider />
 
         {/* Keyword Themes */}
-        <section>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest">Keyword Themes</p>
-            <span className="text-xs text-muted-foreground">
+        <section className="space-y-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground/60 mb-1">Keyword Themes</p>
+              <p className="text-xs text-muted-foreground">Strategic clusters. Review each group — approve what fits, reject what doesn't.</p>
+            </div>
+            <span className={`text-sm font-medium tabular-nums ${
+              blueprint.keywordThemes.filter((t) => t.approved === true).length === blueprint.keywordThemes.length
+                ? "text-emerald-400"
+                : "text-muted-foreground"
+            }`}>
               {blueprint.keywordThemes.filter((t) => t.approved === true).length}/{blueprint.keywordThemes.length} approved
             </span>
           </div>
-          <p className="text-sm text-muted-foreground mb-8">
-            SPARK organises keywords into strategic clusters. Approve or reject each group before launch.
-          </p>
           <div className="space-y-4">
             {blueprint.keywordThemes.map((theme) => {
               const ic = INTENT_COLORS[theme.intent] ?? INTENT_COLORS.Informational;
@@ -479,44 +593,44 @@ function BlueprintCanvas({ blueprint, intent, setBlueprint }: {
                 <div key={theme.id}
                   className={`p-6 rounded-2xl border transition-all ${
                     theme.approved === true
-                      ? "border-emerald-500/20 bg-emerald-500/[0.03]"
+                      ? "border-emerald-500/15 bg-emerald-500/[0.025]"
                       : theme.approved === false
-                      ? "border-white/[0.03] opacity-35"
-                      : "border-white/[0.08] bg-white/[0.015]"
+                      ? "border-white/[0.02] opacity-30"
+                      : "border-white/[0.07] bg-white/[0.01]"
                   }`}>
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-3">
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${ic.badge}`}>
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ic.badge}`}>
                         {theme.intent}
                       </span>
-                      <p className="font-semibold">{theme.name}</p>
+                      <p className="font-semibold text-sm">{theme.name}</p>
                     </div>
                     <div className="flex gap-1.5">
                       <button
                         onClick={() => approveTheme(theme.id, true)}
                         className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
                           theme.approved === true
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : "text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10"
+                            ? "bg-emerald-500/15 text-emerald-400"
+                            : "text-muted-foreground/50 hover:text-emerald-400 hover:bg-emerald-500/10"
                         }`}
                       >
-                        <ThumbsUp size={14} />
+                        <ThumbsUp size={13} />
                       </button>
                       <button
                         onClick={() => approveTheme(theme.id, false)}
                         className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
                           theme.approved === false
                             ? "bg-red-500/15 text-red-400"
-                            : "text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                            : "text-muted-foreground/50 hover:text-red-400 hover:bg-red-500/10"
                         }`}
                       >
-                        <ThumbsUp size={14} className="scale-y-[-1]" />
+                        <ThumbsUp size={13} className="scale-y-[-1]" />
                       </button>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {theme.keywords.map((kw) => (
-                      <span key={kw} className="px-3 py-1.5 rounded-lg text-sm bg-white/[0.04] border border-white/[0.05] text-foreground/75 font-mono text-xs">
+                      <span key={kw} className="px-3 py-1.5 rounded-lg text-xs bg-white/[0.04] border border-white/[0.05] text-foreground/65 font-mono">
                         {kw}
                       </span>
                     ))}
@@ -527,33 +641,31 @@ function BlueprintCanvas({ blueprint, intent, setBlueprint }: {
           </div>
         </section>
 
-        <div className="w-full h-px bg-white/[0.05]" />
+        <Divider />
 
         {/* Negative Keywords */}
-        <section>
-          <div className="mb-2">
-            <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest mb-2">Negative Keyword Themes</p>
-            <p className="text-sm text-muted-foreground">
-              These prevent budget waste from non-commercial searches. Confirm each exclusion list.
-            </p>
+        <section className="space-y-8">
+          <div>
+            <p className="text-sm font-semibold text-foreground/60 mb-1">Negative Keyword Themes</p>
+            <p className="text-xs text-muted-foreground">Exclusion lists to protect budget from non-commercial searches. Confirm each.</p>
           </div>
-          <div className="space-y-3 mt-8">
+          <div className="space-y-3">
             {blueprint.negativeThemes.map((t) => (
               <div key={t.id}
-                className={`flex items-start gap-5 p-5 rounded-2xl border transition-all ${
+                className={`flex items-start gap-5 p-6 rounded-2xl border transition-all ${
                   t.confirmed
                     ? "border-white/[0.04] bg-white/[0.01]"
                     : "border-white/[0.07] bg-white/[0.02]"
                 }`}>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 mb-2">
                     <p className="font-medium text-sm">{t.name}</p>
-                    <span className="text-[10px] text-red-400/60 border border-red-400/15 px-2 py-0.5 rounded-full">Negative</span>
+                    <span className="text-[10px] text-red-400/50 border border-red-400/12 px-2 py-0.5 rounded-full">Negative</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-3">{t.rationale}</p>
+                  <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{t.rationale}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {t.terms.map((term) => (
-                      <span key={term} className="px-2.5 py-1 rounded-full text-xs border border-red-500/15 text-red-300/60 font-mono">{term}</span>
+                      <span key={term} className="px-2.5 py-1 rounded-full text-xs border border-red-500/12 text-red-300/55 font-mono">{term}</span>
                     ))}
                   </div>
                 </div>
@@ -562,7 +674,7 @@ function BlueprintCanvas({ blueprint, intent, setBlueprint }: {
                   className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs transition-colors ${
                     t.confirmed
                       ? "border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-400"
-                      : "border-white/[0.08] text-muted-foreground hover:text-foreground hover:border-white/15"
+                      : "border-white/[0.07] text-muted-foreground hover:text-foreground hover:border-white/15"
                   }`}
                 >
                   <Check size={11} /> {t.confirmed ? "Confirmed" : "Confirm"}
@@ -572,56 +684,58 @@ function BlueprintCanvas({ blueprint, intent, setBlueprint }: {
           </div>
         </section>
 
-        <div className="w-full h-px bg-white/[0.05]" />
+        <Divider />
 
         {/* Ad Direction */}
-        <section>
-          <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest mb-8">Ad Direction</p>
-          <div className="space-y-8">
+        <section className="space-y-8">
+          <div>
+            <p className="text-sm font-semibold text-foreground/60 mb-1">Ad Direction</p>
+            <p className="text-xs text-muted-foreground">Creative brief for this campaign — angle, tone, and example copy.</p>
+          </div>
+          <div className="space-y-9">
             <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Creative Angle</p>
-              <p className="text-base leading-relaxed text-foreground/85">{blueprint.adDirection.angle}</p>
+              <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-4">Creative Angle</p>
+              <p className="text-base leading-relaxed text-foreground/80">{blueprint.adDirection.angle}</p>
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tone of Voice</p>
-              <p className="text-sm text-foreground/75 leading-relaxed">{blueprint.adDirection.tone}</p>
+              <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-4">Tone of Voice</p>
+              <p className="text-sm text-foreground/65 leading-relaxed">{blueprint.adDirection.tone}</p>
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Headline Examples</p>
+              <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-4">Headline Examples</p>
               <div className="space-y-2">
                 {blueprint.adDirection.headlines.map((h, i) => (
-                  <div key={i} className="px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] font-medium text-sm">
-                    {h}
-                  </div>
+                  <div key={i} className="px-5 py-3.5 rounded-xl bg-white/[0.03] border border-white/[0.05] font-medium text-sm">{h}</div>
                 ))}
               </div>
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Description Examples</p>
+              <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-4">Description Examples</p>
               <div className="space-y-2">
                 {blueprint.adDirection.descriptions.map((d, i) => (
-                  <div key={i} className="px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-sm text-foreground/70 leading-relaxed">
-                    {d}
-                  </div>
+                  <div key={i} className="px-5 py-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-sm text-foreground/60 leading-relaxed">{d}</div>
                 ))}
               </div>
             </div>
           </div>
         </section>
 
-        <div className="w-full h-px bg-white/[0.05]" />
+        <Divider />
 
         {/* Tracking */}
-        <section className="pb-10">
-          <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest mb-6">Tracking & Measurement</p>
-          <div className="space-y-5">
-            <div className="p-5 rounded-2xl border border-white/[0.07] bg-white/[0.015]">
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1.5">Primary Conversion Event</p>
+        <section className="space-y-7 pb-12">
+          <div>
+            <p className="text-sm font-semibold text-foreground/60 mb-1">Tracking & Measurement</p>
+            <p className="text-xs text-muted-foreground">Conversion event and implementation requirements before launch.</p>
+          </div>
+          <div className="space-y-4">
+            <div className="p-6 rounded-2xl border border-white/[0.07] bg-white/[0.015]">
+              <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-2">Primary Conversion Event</p>
               <p className="font-mono text-sm text-primary">{blueprint.conversionEvent}</p>
             </div>
-            <div className="p-5 rounded-2xl border border-white/[0.07] bg-white/[0.015]">
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">Implementation Notes</p>
-              <p className="text-sm text-foreground/80 leading-relaxed">{blueprint.trackingNotes}</p>
+            <div className="p-6 rounded-2xl border border-white/[0.07] bg-white/[0.015]">
+              <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-3">Implementation Notes</p>
+              <p className="text-sm text-foreground/75 leading-relaxed">{blueprint.trackingNotes}</p>
             </div>
           </div>
         </section>
@@ -631,152 +745,178 @@ function BlueprintCanvas({ blueprint, intent, setBlueprint }: {
   );
 }
 
-// ─── Readiness Rail ───────────────────────────────────────────────────────────
+// ─── Validation Rail ──────────────────────────────────────────────────────────
 
-function ReadinessRail({ blueprint, intent, onRequestApproval, saving, createdCampaignId }: {
+function ValidationRail({ blueprint, intent, onRequestApproval, saving, createdCampaignId, mode }: {
   blueprint: GeneratedBlueprint;
   intent: CampaignIntent;
   onRequestApproval: () => void;
   saving: boolean;
   createdCampaignId: number | null;
+  mode: StudioMode;
 }) {
   const approvedThemes = blueprint.keywordThemes.filter((t) => t.approved === true).length;
   const totalThemes = blueprint.keywordThemes.length;
-  const hasLandingPage = intent.landingPage?.startsWith("http");
+  const hasLandingPage = !!intent.landingPage?.startsWith("http");
+  const hasTracking = !!blueprint.conversionEvent;
+  const platformsSet = blueprint.platforms.length > 0;
+  const allKeywordsReviewed = approvedThemes === totalThemes;
 
-  const approvalChecks = [
+  const checks = [
     { label: "Blueprint generated", done: true },
-    { label: "Platform strategy set", done: blueprint.platforms.length > 0 },
-    { label: `Keywords reviewed (${approvedThemes}/${totalThemes})`, done: approvedThemes === totalThemes },
-    { label: "Landing page verified", done: !!hasLandingPage },
-    { label: "Tracking plan set", done: !!blueprint.conversionEvent },
+    { label: "Platform strategy set", done: platformsSet },
+    { label: `Keywords reviewed (${approvedThemes}/${totalThemes})`, done: allKeywordsReviewed },
+    { label: "Landing page verified", done: hasLandingPage },
+    { label: "Tracking plan set", done: hasTracking },
   ];
 
-  const donePct = Math.round((approvalChecks.filter((c) => c.done).length / approvalChecks.length) * 100);
-  const isReady = donePct === 100;
+  const blockers: { msg: string; error: boolean }[] = [];
+  if (!hasLandingPage) blockers.push({ msg: "Landing page URL required before approval", error: true });
+  if (!allKeywordsReviewed) blockers.push({ msg: `${totalThemes - approvedThemes} keyword theme${totalThemes - approvedThemes > 1 ? "s" : ""} not reviewed`, error: false });
+  if (!PLATFORM_CONN["Baidu"] && intent.geography?.toLowerCase().includes("china")) {
+    blockers.push({ msg: "Baidu account required for China targeting", error: true });
+  }
+  if (!createdCampaignId) blockers.push({ msg: "Campaign not yet saved to API", error: false });
+
+  const doneCount = checks.filter((c) => c.done).length;
+  const pct = Math.round((doneCount / checks.length) * 100);
+  const hardBlockers = blockers.filter((b) => b.error);
+  const canApprove = hardBlockers.length === 0 && !!createdCampaignId;
+
   const budget = Number(intent.totalBudget || 0);
   const dailyCap = budget ? Math.round(budget / 30) : null;
 
   return (
-    <div className="w-72 shrink-0 border-l border-white/[0.06] bg-[#0c0e17] flex flex-col overflow-y-auto">
-      <div className="p-6 space-y-8">
+    <div className="w-80 shrink-0 border-l border-white/[0.05] bg-[#0c0e17] flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto p-7 space-y-9">
 
         {/* Campaign summary */}
         <div>
-          <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-4">Campaign</p>
-          <p className="font-semibold text-sm leading-snug mb-3">{intent.name || "Untitled campaign"}</p>
-          <div className="space-y-2 text-xs text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest mb-4">Campaign</p>
+          <p className="font-semibold text-sm leading-snug mb-4">{intent.name || "Untitled campaign"}</p>
+          <div className="space-y-2.5">
             {intent.primaryGoal && (
-              <div className="flex items-center gap-2">
-                <Target size={11} className="shrink-0 text-primary/50" />
-                <span className="capitalize">{intent.primaryGoal.replace(/_/g, " ")}</span>
+              <div className="flex items-center gap-2.5 text-sm">
+                <Target size={13} className="shrink-0 text-primary/40" />
+                <span className="text-muted-foreground capitalize">{intent.primaryGoal.replace(/_/g, " ")}</span>
               </div>
             )}
             {intent.geography && (
-              <div className="flex items-center gap-2">
-                <Globe size={11} className="shrink-0 text-muted-foreground/50" />
-                <span>{intent.geography}</span>
+              <div className="flex items-center gap-2.5 text-sm">
+                <Globe size={13} className="shrink-0 text-muted-foreground/40" />
+                <span className="text-muted-foreground">{intent.geography}</span>
               </div>
             )}
             {budget > 0 && (
-              <div className="flex items-center gap-2">
-                <DollarSign size={11} className="shrink-0 text-muted-foreground/50" />
-                <span>${budget.toLocaleString()}/mo {dailyCap ? `· $${dailyCap.toLocaleString()}/day` : ""}</span>
+              <div className="flex items-center gap-2.5 text-sm">
+                <DollarSign size={13} className="shrink-0 text-muted-foreground/40" />
+                <span className="text-muted-foreground">${budget.toLocaleString()}/mo{dailyCap ? ` · $${dailyCap.toLocaleString()}/day` : ""}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Provider readiness */}
-        <div>
-          <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-5">Provider Readiness</p>
-          <div className="flex items-center justify-around gap-4">
-            <RadialGauge score={blueprint.providerReadiness.google} label="Google Ads" size={80} />
-            <RadialGauge score={blueprint.providerReadiness.bing} label="Bing Ads" size={80} />
+        <Divider />
+
+        {/* Provider readiness + validation together */}
+        <div className="space-y-6">
+          <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest">Validation</p>
+
+          {/* Gauges */}
+          <div className="flex items-center justify-around">
+            <RadialGauge score={blueprint.providerReadiness.google} label="Google Ads" size={88} />
+            <RadialGauge score={blueprint.providerReadiness.bing} label="Bing Ads" size={88} />
           </div>
-          {!PLATFORM_CONN["Baidu"] && (
-            <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-amber-500/[0.06] border border-amber-500/10 text-xs text-amber-400/80">
-              <AlertTriangle size={11} className="shrink-0 mt-0.5" />
-              <span>Baidu account not connected</span>
+
+          {/* Expert: provider detail */}
+          {mode === "expert" && (
+            <div className="text-xs text-muted-foreground space-y-1.5 pt-1">
+              <div className="flex justify-between">
+                <span>Conversion tracking</span>
+                <span className="text-emerald-400">Configured</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Landing page quality</span>
+                <span className={hasLandingPage ? "text-emerald-400" : "text-amber-400"}>{hasLandingPage ? "Verified" : "Unverified"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Account connection</span>
+                <span className="text-emerald-400">Google · Bing</span>
+              </div>
+            </div>
+          )}
+
+          {/* Approval readiness bar */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-muted-foreground/60">Approval readiness</p>
+              <span className={`text-sm font-bold tabular-nums ${pct === 100 ? "text-emerald-400" : "text-muted-foreground"}`}>{pct}%</span>
+            </div>
+            <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden mb-5">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? "bg-emerald-400" : "bg-primary"}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <div className="space-y-2.5">
+              {checks.map((c, i) => (
+                <div key={i} className="flex items-center gap-2.5">
+                  {c.done
+                    ? <CheckCircle size={13} className="text-emerald-400 shrink-0" />
+                    : <div className="w-3.5 h-3.5 rounded-full border border-white/[0.15] shrink-0" />
+                  }
+                  <span className={`text-xs leading-snug ${c.done ? "text-foreground/65" : "text-muted-foreground/40"}`}>{c.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Blockers */}
+          {blockers.length > 0 && (
+            <div className="space-y-2 pt-1">
+              {blockers.map((b, i) => (
+                <div key={i} className={`flex items-start gap-2 text-xs p-3 rounded-xl ${
+                  b.error ? "bg-red-500/[0.07] text-red-300" : "bg-amber-500/[0.07] text-amber-300"
+                }`}>
+                  {b.error
+                    ? <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                    : <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                  }
+                  <span className="leading-snug">{b.msg}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {canApprove && blockers.length === 0 && (
+            <div className="flex items-start gap-2 text-xs text-emerald-400/80">
+              <CheckCircle size={12} className="shrink-0 mt-0.5" />
+              <span>No blocking issues — ready for approval.</span>
             </div>
           )}
         </div>
 
-        {/* Approval readiness */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">Approval Readiness</p>
-            <span className={`text-xs font-bold ${isReady ? "text-emerald-400" : "text-muted-foreground"}`}>{donePct}%</span>
-          </div>
-          <div className="h-1 bg-white/[0.06] rounded-full mb-5 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${isReady ? "bg-emerald-400" : "bg-primary"}`}
-              style={{ width: `${donePct}%` }}
-            />
-          </div>
-          <div className="space-y-3">
-            {approvalChecks.map((c, i) => (
-              <div key={i} className="flex items-center gap-2.5">
-                {c.done ? (
-                  <CheckCircle size={13} className="text-emerald-400 shrink-0" />
-                ) : (
-                  <div className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0" />
-                )}
-                <span className={`text-xs leading-snug ${c.done ? "text-foreground/70" : "text-muted-foreground/50"}`}>
-                  {c.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Risks */}
-        <div>
-          <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-3">To Review</p>
-          <div className="space-y-2">
-            {!hasLandingPage && (
-              <div className="flex items-start gap-2 text-xs text-amber-400/70">
-                <AlertTriangle size={11} className="shrink-0 mt-0.5" />
-                <span>Landing page URL required for tracking verification</span>
-              </div>
-            )}
-            {approvedThemes < totalThemes && (
-              <div className="flex items-start gap-2 text-xs text-amber-400/70">
-                <AlertTriangle size={11} className="shrink-0 mt-0.5" />
-                <span>{totalThemes - approvedThemes} keyword theme{totalThemes - approvedThemes > 1 ? "s" : ""} not yet reviewed</span>
-              </div>
-            )}
-            {!PLATFORM_CONN["Baidu"] && intent.geography?.toLowerCase().includes("china") && (
-              <div className="flex items-start gap-2 text-xs text-red-400/70">
-                <AlertCircle size={11} className="shrink-0 mt-0.5" />
-                <span>Baidu required for China targeting — account not connected</span>
-              </div>
-            )}
-            {hasLandingPage && approvedThemes === totalThemes && (
-              <div className="flex items-start gap-2 text-xs text-emerald-400/70">
-                <CheckCircle size={11} className="shrink-0 mt-0.5" />
-                <span>No blocking issues found</span>
-              </div>
-            )}
-          </div>
-        </div>
-
       </div>
 
-      {/* Sticky Request Approval button */}
-      <div className="mt-auto p-5 border-t border-white/[0.06]">
+      {/* Approval CTA — sticky at bottom */}
+      <div className="shrink-0 p-6 border-t border-white/[0.05]">
         {!createdCampaignId && (
-          <p className="text-xs text-muted-foreground text-center mb-3">
+          <p className="text-xs text-muted-foreground/50 text-center mb-4">
             Generate the blueprint first to enable approval.
+          </p>
+        )}
+        {createdCampaignId && !canApprove && (
+          <p className="text-xs text-muted-foreground/50 text-center mb-4">
+            Resolve blocking issues above before requesting approval.
           </p>
         )}
         <button
           onClick={onRequestApproval}
-          disabled={!createdCampaignId || saving}
-          className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold text-sm transition-all ${
-            createdCampaignId && !saving
+          disabled={!canApprove || saving}
+          className={`w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-semibold text-sm transition-all ${
+            canApprove && !saving
               ? "bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
-              : "bg-white/[0.04] text-muted-foreground cursor-not-allowed"
+              : "bg-white/[0.04] text-muted-foreground/40 cursor-not-allowed"
           }`}
           data-testid="btn-request-approval"
         >
@@ -791,7 +931,7 @@ function ReadinessRail({ blueprint, intent, onRequestApproval, saving, createdCa
   );
 }
 
-// ─── Blueprint Studio ─────────────────────────────────────────────────────────
+// ─── Blueprint Studio (full-screen overlay) ───────────────────────────────────
 
 function BlueprintStudio({ open, onClose, initialCampaign }: {
   open: boolean; onClose: () => void; initialCampaign?: Campaign | null;
@@ -799,7 +939,9 @@ function BlueprintStudio({ open, onClose, initialCampaign }: {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+
   const [phase, setPhase] = useState<"intent" | "blueprint">("intent");
+  const [mode, setMode] = useState<StudioMode>("guided");
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [createdCampaignId, setCreatedCampaignId] = useState<number | null>(null);
@@ -850,14 +992,10 @@ function BlueprintStudio({ open, onClose, initialCampaign }: {
       const localBp: GeneratedBlueprint = {
         strategicAngle: (apiBp as any).strategicAngle ?? generateBlueprint(intent).strategicAngle,
         platforms: ((apiBp as any).platformStrategy ?? []).map((p: any) => ({
-          name: p.name as Platform,
-          budgetPct: p.budgetPct,
-          rationale: p.rationale,
-          recommended: p.recommended,
+          name: p.name as Platform, budgetPct: p.budgetPct, rationale: p.rationale, recommended: p.recommended,
         })),
         keywordThemes: ((apiBp as any).keywordThemes ?? []).map((t: any) => ({
-          id: t.id, name: t.name, intent: t.intent as KeywordTheme["intent"],
-          keywords: t.keywords, approved: t.approved ?? null,
+          id: t.id, name: t.name, intent: t.intent as KeywordTheme["intent"], keywords: t.keywords, approved: t.approved ?? null,
         })),
         negativeThemes: ((apiBp as any).negativeKeywordThemes ?? []).map((t: any) => ({
           id: t.id, name: t.name, rationale: t.rationale, terms: t.terms,
@@ -875,7 +1013,7 @@ function BlueprintStudio({ open, onClose, initialCampaign }: {
       }
       setBlueprint(localBp);
       setPhase("blueprint");
-      toast({ title: "Blueprint ready", description: "SPARK has designed your campaign strategy. Review each section." });
+      toast({ title: "Blueprint ready", description: "Review each section, then request approval." });
     } catch {
       const bp = generateBlueprint(intent);
       setBlueprint(bp);
@@ -911,24 +1049,26 @@ function BlueprintStudio({ open, onClose, initialCampaign }: {
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0b0d14] flex flex-col">
-      {/* Header */}
-      <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
-            <Brain size={14} className="text-primary" />
+
+      {/* ── Header ── */}
+      <div className="shrink-0 flex items-center justify-between px-7 py-4 border-b border-white/[0.05]">
+        <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+              <Brain size={14} className="text-primary" />
+            </div>
+            <span className="text-sm font-semibold">Blueprint Studio</span>
           </div>
-          <div>
-            <p className="text-sm font-semibold">Blueprint Studio</p>
-            <p className="text-[11px] text-muted-foreground">
-              {phase === "intent" ? "Define campaign intent" : intent.name || "Untitled campaign"}
-            </p>
-          </div>
+          <div className="w-px h-4 bg-white/[0.08]" />
+          <StepIndicator phase={phase} />
         </div>
+
         <div className="flex items-center gap-3">
+          <ModeToggle mode={mode} onChange={setMode} />
           {phase === "blueprint" && (
             <button
               onClick={() => setPhase("intent")}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-white/[0.04]"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-white/[0.04]"
             >
               ← Edit Intent
             </button>
@@ -943,7 +1083,19 @@ function BlueprintStudio({ open, onClose, initialCampaign }: {
         </div>
       </div>
 
-      {/* Body */}
+      {/* ── Campaign name subheader (blueprint phase only) ── */}
+      {phase === "blueprint" && intent.name && (
+        <div className="shrink-0 px-7 py-3 border-b border-white/[0.04] bg-white/[0.01]">
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{intent.name}</span>
+            {intent.primaryGoal && <span className="ml-2 capitalize text-muted-foreground/60">· {intent.primaryGoal.replace(/_/g, " ")}</span>}
+            {intent.geography && <span className="ml-2 text-muted-foreground/60">· {intent.geography}</span>}
+            {intent.totalBudget && <span className="ml-2 text-muted-foreground/60">· ${Number(intent.totalBudget).toLocaleString()}/mo</span>}
+          </p>
+        </div>
+      )}
+
+      {/* ── Body ── */}
       <div className="flex-1 flex overflow-hidden">
         {phase === "intent" ? (
           <IntentCanvas
@@ -951,6 +1103,7 @@ function BlueprintStudio({ open, onClose, initialCampaign }: {
             setIntent={setIntent}
             onGenerate={handleGenerate}
             generating={generating}
+            mode={mode}
           />
         ) : blueprint ? (
           <>
@@ -958,13 +1111,15 @@ function BlueprintStudio({ open, onClose, initialCampaign }: {
               blueprint={blueprint}
               intent={intent}
               setBlueprint={setBlueprint}
+              mode={mode}
             />
-            <ReadinessRail
+            <ValidationRail
               blueprint={blueprint}
               intent={intent}
               onRequestApproval={handleRequestApproval}
               saving={saving}
               createdCampaignId={createdCampaignId}
+              mode={mode}
             />
           </>
         ) : null}
@@ -979,63 +1134,56 @@ function PPCOverview({ campaigns, onNewCampaign, onEditCampaign }: {
   campaigns: Campaign[]; onNewCampaign: () => void; onEditCampaign: (c: Campaign) => void;
 }) {
   const active = campaigns.filter((c) => c.status === "live" || c.status === "optimising");
-  const trackingIssues = campaigns.filter((c) => c.trackingStatus !== "ok");
   const pending = campaigns.filter((c) => c.approvalStatus === "pending");
-  const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
+  const trackingIssues = campaigns.filter((c) => c.trackingStatus !== "ok");
   const totalBudget = campaigns.reduce((s, c) => s + c.budget, 0);
+  const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
   const topRec = campaigns.find((c) => c.sparkRec);
 
-  const OPPORTUNITIES = [
-    { label: "Add 14 negatives to Non-Brand", impact: "~$1,840 saved/mo", effort: "5 min", type: "Negative KW" },
-    { label: "Shift $3k Competitor → Brand Search", impact: "ROAS 6.1× vs 1.8×", effort: "2 min", type: "Budget" },
-    { label: "Fix GA4 event on Enterprise Lead Gen", impact: "Required for launch", effort: "15 min", type: "Tracking" },
-  ];
-
   return (
-    <div className="grid grid-cols-[1fr_300px] gap-8 items-start">
+    <div className="grid grid-cols-[1fr_280px] gap-8">
+      {/* Left — main content */}
       <div className="space-y-8">
-        {/* Intelligence band */}
-        <div className="p-8 rounded-2xl border border-white/[0.06] bg-gradient-to-br from-primary/[0.07] via-[#0c0e18] to-transparent relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-56 bg-primary/[0.04] rounded-full blur-3xl pointer-events-none" />
-          <div className="relative">
-            <p className="text-xs font-bold text-primary/60 uppercase tracking-widest mb-5">SPARK Intelligence</p>
-            {topRec ? (
-              <>
-                <p className="text-2xl font-bold mb-1.5 leading-snug">{topRec.sparkRec}</p>
-                <p className="text-muted-foreground">{topRec.name}</p>
-              </>
-            ) : (
-              <p className="text-2xl font-bold">All campaigns healthy — no critical actions.</p>
-            )}
-            <div className="flex items-center gap-8 mt-8">
-              {[
-                { value: active.length.toString(), label: "Active campaigns", color: "text-emerald-400" },
-                { value: `$${(totalSpend / 1000).toFixed(1)}k`, label: `of $${(totalBudget / 1000).toFixed(0)}k/mo`, color: "" },
-                { value: pending.length.toString(), label: "Awaiting approval", color: pending.length > 0 ? "text-amber-400" : "text-muted-foreground" },
-                { value: trackingIssues.length.toString(), label: trackingIssues.length > 0 ? "Tracking issues" : "All tracking OK", color: trackingIssues.length > 0 ? "text-red-400" : "text-emerald-400" },
-              ].map((stat, i, arr) => (
-                <div key={stat.label} className="flex items-center gap-8">
-                  <div>
-                    <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
-                  </div>
-                  {i < arr.length - 1 && <div className="w-px h-10 bg-white/[0.06]" />}
+
+        {/* SPARK intelligence band */}
+        <div className="p-8 rounded-2xl border border-white/[0.06] bg-white/[0.01]">
+          <p className="text-xs font-medium text-primary/60 uppercase tracking-widest mb-5">SPARK Intelligence</p>
+          {topRec ? (
+            <>
+              <p className="text-2xl font-bold mb-1.5 leading-snug">{topRec.sparkRec}</p>
+              <p className="text-muted-foreground text-sm">{topRec.name}</p>
+            </>
+          ) : (
+            <p className="text-2xl font-bold">All campaigns healthy — no critical actions.</p>
+          )}
+          <div className="flex items-center gap-8 mt-8 pt-6 border-t border-white/[0.05]">
+            {[
+              { value: active.length.toString(), label: "Active campaigns", color: "text-emerald-400" },
+              { value: `$${(totalSpend / 1000).toFixed(1)}k`, label: `of $${(totalBudget / 1000).toFixed(0)}k/mo`, color: "" },
+              { value: pending.length.toString(), label: "Awaiting approval", color: pending.length > 0 ? "text-amber-400" : "text-muted-foreground" },
+              { value: trackingIssues.length.toString(), label: trackingIssues.length > 0 ? "Tracking issues" : "All tracking OK", color: trackingIssues.length > 0 ? "text-red-400" : "text-emerald-400" },
+            ].map((stat, i, arr) => (
+              <div key={stat.label} className="flex items-center gap-8">
+                <div>
+                  <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
                 </div>
-              ))}
-            </div>
+                {i < arr.length - 1 && <div className="w-px h-10 bg-white/[0.06]" />}
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Campaign list */}
         <div>
           <div className="flex items-center justify-between mb-5">
-            <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest">Campaigns</p>
+            <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest">Campaigns</p>
             <button onClick={onNewCampaign} className="text-xs text-primary flex items-center gap-1.5 hover:text-primary/80 transition-colors">
               <Plus size={11} /> New Campaign
             </button>
           </div>
           <div className="space-y-1">
-            <div className="grid grid-cols-[1fr_120px_80px_70px_70px_24px] px-4 py-2 text-[11px] text-muted-foreground/30 uppercase tracking-wider">
+            <div className="grid grid-cols-[1fr_120px_80px_70px_70px_24px] px-4 py-2 text-[11px] text-muted-foreground/25 uppercase tracking-wider">
               <span>Campaign</span><span>Status</span><span className="text-right">Budget</span><span className="text-right">Conv.</span><span className="text-right">CPL</span><span />
             </div>
             {campaigns.map((c) => (
@@ -1048,7 +1196,7 @@ function PPCOverview({ campaigns, onNewCampaign, onEditCampaign }: {
                     <span className="font-medium text-sm">{c.name}</span>
                     {c.trackingStatus !== "ok" && <AlertTriangle size={11} className={`${c.trackingStatus === "error" ? "text-red-400" : "text-amber-400"} shrink-0`} />}
                   </div>
-                  {c.sparkRec && <p className="text-xs text-primary/50 ml-4">{c.sparkRec}</p>}
+                  {c.sparkRec && <p className="text-xs text-primary/40 ml-4">{c.sparkRec}</p>}
                 </div>
                 <span className={`text-xs font-medium ${STATUS_CONFIG[c.status].color}`}>{STATUS_CONFIG[c.status].label}</span>
                 <p className="text-right text-sm">{c.budget ? `$${(c.budget / 1000).toFixed(0)}k` : "—"}</p>
@@ -1065,11 +1213,11 @@ function PPCOverview({ campaigns, onNewCampaign, onEditCampaign }: {
         </div>
 
         {/* Account connection status */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground/40 mr-1">Accounts:</span>
+        <div className="flex items-center gap-2 flex-wrap pt-2">
+          <span className="text-xs text-muted-foreground/30 mr-1">Accounts:</span>
           {(["Google Ads", "Microsoft Advertising", "Baidu", "Naver"] as Platform[]).map((p) => (
-            <span key={p} className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${PLATFORM_CONN[p] ? "border-emerald-500/15 text-emerald-400" : "border-white/[0.05] text-muted-foreground/40"}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${PLATFORM_CONN[p] ? "bg-emerald-400" : "bg-white/15"}`} />
+            <span key={p} className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${PLATFORM_CONN[p] ? "border-emerald-500/12 text-emerald-400/70" : "border-white/[0.04] text-muted-foreground/30"}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${PLATFORM_CONN[p] ? "bg-emerald-400" : "bg-white/10"}`} />
               {p === "Microsoft Advertising" ? "Bing" : p}
             </span>
           ))}
@@ -1080,15 +1228,15 @@ function PPCOverview({ campaigns, onNewCampaign, onEditCampaign }: {
       <div className="space-y-6">
         {pending.length > 0 && (
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-3">Awaiting Approval</p>
+            <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest mb-4">Awaiting Approval</p>
             <div className="space-y-2">
               {pending.map((c) => (
-                <div key={c.id} className="p-4 rounded-xl border border-amber-500/15 bg-amber-500/[0.04]">
+                <div key={c.id} className="p-5 rounded-2xl border border-amber-500/12 bg-amber-500/[0.03]">
                   <p className="text-sm font-medium mb-1">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">{c.owner} · ${c.budget.toLocaleString()}/mo</p>
-                  <div className="flex gap-2 mt-3">
-                    <button className="flex-1 py-1.5 rounded-lg border border-white/[0.06] text-xs text-muted-foreground hover:text-foreground transition-colors">Reject</button>
-                    <button className="flex-1 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors">Approve</button>
+                  <p className="text-xs text-muted-foreground mb-4">{c.owner} · ${c.budget.toLocaleString()}/mo</p>
+                  <div className="flex gap-2">
+                    <button className="flex-1 py-2 rounded-xl border border-white/[0.06] text-xs text-muted-foreground hover:text-foreground transition-colors">Reject</button>
+                    <button className="flex-1 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors">Approve</button>
                   </div>
                 </div>
               ))}
@@ -1098,11 +1246,11 @@ function PPCOverview({ campaigns, onNewCampaign, onEditCampaign }: {
 
         {trackingIssues.length > 0 && (
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-3">Tracking Issues</p>
+            <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest mb-4">Tracking Issues</p>
             <div className="space-y-2">
               {trackingIssues.map((c) => (
-                <div key={c.id} className={`p-4 rounded-xl border ${c.trackingStatus === "error" ? "border-red-500/15 bg-red-500/[0.04]" : "border-amber-500/15 bg-amber-500/[0.04]"}`}>
-                  <div className="flex items-center gap-2 mb-1">
+                <div key={c.id} className={`p-5 rounded-2xl border ${c.trackingStatus === "error" ? "border-red-500/12 bg-red-500/[0.03]" : "border-amber-500/12 bg-amber-500/[0.03]"}`}>
+                  <div className="flex items-center gap-2 mb-1.5">
                     {c.trackingStatus === "error" ? <XCircle size={12} className="text-red-400" /> : <AlertTriangle size={12} className="text-amber-400" />}
                     <p className="text-sm font-medium">{c.name}</p>
                   </div>
@@ -1114,16 +1262,14 @@ function PPCOverview({ campaigns, onNewCampaign, onEditCampaign }: {
         )}
 
         <div>
-          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-3">AI Opportunities</p>
+          <p className="text-xs font-medium text-muted-foreground/40 uppercase tracking-widest mb-4">AI Opportunities</p>
           <div className="space-y-2">
             {OPPORTUNITIES.map((opp, i) => (
-              <div key={i} className="p-4 rounded-xl border border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.03] transition-colors">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-xs px-2 py-0.5 rounded-full border border-primary/15 text-primary/60">{opp.type}</span>
-                </div>
-                <p className="text-sm font-medium mb-1">{opp.label}</p>
+              <div key={i} className="p-5 rounded-2xl border border-white/[0.05] bg-white/[0.01] hover:bg-white/[0.025] transition-colors">
+                <span className="text-xs px-2.5 py-0.5 rounded-full border border-primary/12 text-primary/55 mb-2.5 inline-block">{opp.type}</span>
+                <p className="text-sm font-medium mb-2">{opp.label}</p>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="text-emerald-400/80">{opp.impact}</span>
+                  <span className="text-emerald-400/70">{opp.impact}</span>
                   <span>{opp.effort}</span>
                 </div>
               </div>
@@ -1148,21 +1294,21 @@ function RecommendationsView() {
   return (
     <div className="max-w-3xl space-y-3">
       {RECS.map((r, i) => (
-        <div key={i} className="flex items-start gap-5 p-6 rounded-2xl border border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.025] transition-colors">
+        <div key={i} className="flex items-start gap-5 p-7 rounded-2xl border border-white/[0.05] bg-white/[0.01] hover:bg-white/[0.025] transition-colors">
           <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${priorityDot[r.priority]}`} />
           <div className="flex-1">
-            <div className="flex items-center gap-2.5 mb-2">
-              <span className="text-xs font-semibold text-primary/60 uppercase tracking-wide">{r.type}</span>
+            <div className="flex items-center gap-2.5 mb-2.5">
+              <span className="text-xs font-semibold text-primary/55 uppercase tracking-wide">{r.type}</span>
               <span className="text-xs text-muted-foreground/40">·</span>
               <span className="text-xs text-muted-foreground">{r.campaign}</span>
             </div>
-            <p className="text-base font-medium mb-1.5">{r.title}</p>
+            <p className="text-base font-medium mb-2">{r.title}</p>
             <div className="flex gap-4 text-xs">
-              <span className="text-emerald-400/80">{r.impact}</span>
+              <span className="text-emerald-400/70">{r.impact}</span>
               <span className="text-muted-foreground">Est. {r.effort}</span>
             </div>
           </div>
-          <button className="px-4 py-2 rounded-xl bg-primary/10 border border-primary/20 text-xs text-primary hover:bg-primary/15 transition-colors flex items-center gap-1.5 shrink-0">
+          <button className="px-4 py-2 rounded-xl bg-primary/10 border border-primary/15 text-xs text-primary hover:bg-primary/15 transition-colors flex items-center gap-1.5 shrink-0">
             <Zap size={10} /> Apply
           </button>
         </div>
@@ -1180,17 +1326,17 @@ function ApprovalsView() {
   return (
     <div className="max-w-3xl space-y-3">
       {APPROVALS.map((a, i) => (
-        <div key={i} className={`flex items-start gap-5 p-6 rounded-2xl border ${a.urgent ? "border-amber-500/15 bg-amber-500/[0.03]" : "border-white/[0.06] bg-white/[0.01]"}`}>
+        <div key={i} className={`flex items-start gap-5 p-7 rounded-2xl border ${a.urgent ? "border-amber-500/12 bg-amber-500/[0.025]" : "border-white/[0.05] bg-white/[0.01]"}`}>
           <div className="flex-1">
-            <div className="flex items-center gap-2.5 mb-2">
+            <div className="flex items-center gap-2.5 mb-2.5">
               {a.urgent && <span className="text-xs font-bold text-amber-400">URGENT</span>}
               <span className="text-xs text-muted-foreground">{a.type} · {a.amount}</span>
             </div>
-            <p className="text-base font-medium mb-1">{a.title}</p>
+            <p className="text-base font-medium mb-1.5">{a.title}</p>
             <p className="text-sm text-muted-foreground">Requested by {a.by} · {a.time}</p>
           </div>
           <div className="flex gap-2 shrink-0">
-            <button className="px-4 py-2 rounded-xl border border-white/[0.08] text-xs text-muted-foreground hover:text-foreground transition-colors">Reject</button>
+            <button className="px-4 py-2 rounded-xl border border-white/[0.07] text-xs text-muted-foreground hover:text-foreground transition-colors">Reject</button>
             <button className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors flex items-center gap-1.5">
               <CheckCircle size={11} /> Approve
             </button>
@@ -1213,12 +1359,12 @@ function ReportsView() {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl">
       {REPORTS.map((r) => (
-        <div key={r.name} className="p-6 rounded-2xl border border-white/[0.06] bg-white/[0.01] hover:border-white/[0.10] hover:bg-white/[0.03] transition-all cursor-pointer group">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/15 transition-colors">
+        <div key={r.name} className="p-7 rounded-2xl border border-white/[0.05] bg-white/[0.01] hover:border-white/[0.09] hover:bg-white/[0.025] transition-all cursor-pointer group">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/15 transition-colors">
             <BarChart2 size={15} className="text-primary" />
           </div>
-          <p className="font-semibold mb-1">{r.name}</p>
-          <p className="text-xs text-muted-foreground mb-5">{r.note}</p>
+          <p className="font-semibold mb-1.5">{r.name}</p>
+          <p className="text-xs text-muted-foreground mb-6">{r.note}</p>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <button className="flex items-center gap-1 hover:text-foreground transition-colors"><Eye size={11} /> View</button>
             <button className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto"><Download size={11} /></button>
@@ -1282,7 +1428,7 @@ export default function PPC() {
         </button>
       </div>
 
-      <div className="flex items-center gap-1 border-b border-white/[0.06]">
+      <div className="flex items-center gap-1 border-b border-white/[0.05]">
         {TABS.map((tab) => (
           <button key={tab.value} onClick={() => setActiveTab(tab.value)}
             className={`px-4 py-2.5 text-sm transition-colors border-b-2 -mb-px ${
