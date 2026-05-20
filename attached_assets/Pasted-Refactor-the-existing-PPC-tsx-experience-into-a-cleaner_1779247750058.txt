@@ -1,0 +1,135 @@
+Refactor the existing `PPC.tsx` experience into a cleaner SPARK PPC workflow.
+
+Context:
+This is for SPARK AI, an enterprise-style AI campaign operating system. The current PPC page feels crowded, confusing, and structurally wrong because it mixes campaign creation, campaign monitoring, AI recommendations, approvals, and reports in one overloaded screen.
+
+Goal:
+Redesign the PPC module so it feels controlled, enterprise-grade, and easy to understand. Prioritise workflow clarity over feature density.
+
+Core product rule:
+Do not make one page do everything.
+Separate:
+1. monitoring
+2. campaign building
+3. approvals
+4. reporting
+
+Required new structure:
+
+1. PPC Overview page
+This is the default PPC landing page.
+It should show only:
+- KPI summary cards
+- campaign list / campaign table
+- tracking issues
+- approval alerts
+- top AI recommendations
+- connected account status
+
+This page should answer:
+“What needs attention right now?”
+
+Do not place the guided campaign creation wizard directly inside this overview page.
+
+2. Campaign Workspace page or full-screen modal
+When user clicks “New Campaign” or edits an existing campaign, open a dedicated focused workspace.
+This must not feel like a dashboard.
+It should feel like a step-by-step operating flow.
+
+Use only 5 steps:
+- Goal
+- Audience & Landing Page
+- Keywords & Budget
+- Ads & Tracking
+- Review & Approval
+
+Layout for the campaign workspace:
+- top header with campaign name, draft status, save draft
+- main content area for current step
+- slim right-side SPARK Brain panel with contextual AI guidance only
+- bottom navigation with Back / Next / Save Draft
+- final step shows the only important final actions
+
+Do not include campaign table, reports, approvals inbox, or dashboard tabs inside this workspace.
+
+3. Separate operations views
+Keep these outside the campaign workspace:
+- Recommendations
+- Approvals
+- Reports
+- Settings / Integrations
+
+These can remain tabs or subpages, but they must not appear inside the campaign creation flow.
+
+Workflow corrections required:
+
+1. Make the PPC creation workflow sequential and safe
+The user should move through a clear path:
+- define campaign goal
+- define audience and landing page
+- build keyword strategy and budget
+- generate ad copy and tracking setup
+- review readiness and request approval
+
+2. Remove fake workflow behavior
+Current hardcoded approval and readiness placeholders should be replaced with more realistic derived logic.
+Examples:
+- approval readiness depends on budget, tracking, keywords, landing page, and required fields
+- draft creation should be disabled until minimum campaign structure is valid
+- request approval should appear only on final step
+- launch simulation should not appear before review
+
+3. Make keywords part of the actual workflow
+Accepted AI keywords should flow into the campaign summary and draft structure.
+Negative keyword suggestions must update the actual form state, not just local temporary UI state.
+
+4. Reduce visual noise
+Inside the campaign workspace:
+- remove excess badges and decorative status chips
+- reduce simultaneous buttons
+- show only one primary CTA per step
+- move advanced options behind collapsible “Advanced settings”
+- use whitespace and hierarchy to simplify the page
+
+5. Improve decision safety
+The UI should reduce anxiety.
+Rules:
+- show warnings only when relevant
+- do not show all alerts all the time
+- do not show unrelated recommendations during campaign setup
+- show one clear next action at a time
+
+Visual design direction:
+- premium enterprise SaaS
+- calmer and less crowded
+- cleaner spacing
+- stronger visual hierarchy
+- fewer competing cards
+- avoid “busy prototype” feel
+- keep the SPARK Brain panel useful but restrained
+- use clear section titles and short helper text
+- make the campaign workspace feel like a guided control room, not a cluttered form dump
+
+Information architecture target:
+
+PPC module:
+- Overview
+- Campaigns
+- Recommendations
+- Approvals
+- Reports
+- Settings
+
+Campaign creation/editing should open a dedicated Campaign Workspace, separate from the overview.
+
+Deliverables:
+1. Refactor `PPC.tsx` into this cleaner structure
+2. If needed, split large sections into smaller components
+3. Preserve mock data and prototype behavior where helpful
+4. Keep it prototype-friendly, but make the workflow structurally correct
+5. Ensure the result is responsive on desktop and usable on laptop screens
+
+Important:
+Do not just restyle the current page.
+Restructure the workflow and reduce cognitive overload.
+Focus on clarity, sequence, and safer decision-making.
