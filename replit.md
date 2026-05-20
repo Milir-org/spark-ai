@@ -51,7 +51,7 @@ An enterprise-grade AI-powered marketing suite SaaS prototype. Enables B2B marke
 
 ## GitHub
 
-- **Repo**: https://github.com/milir-ai/spark-ai (branch: `main`)
+- **Repo**: https://github.com/Milir-org/spark-ai (branch: `main`)
 - **Push**: `bash scripts/push-github.sh` — writes to GitHub using the `GITHUB_TOKEN` secret
 - **Workflow**: small batches → commit → push after every task. End of task summary includes branch, latest hash, files changed, and verification.
 - `GITHUB_TOKEN` is stored as a Replit secret (repo scope). Never hardcode it.
