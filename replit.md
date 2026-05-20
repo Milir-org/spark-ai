@@ -49,6 +49,13 @@ An enterprise-grade AI-powered marketing suite SaaS prototype. Enables B2B marke
 - **Other channels**: SEO, Social, CRM, Messaging, Creative, Analytics — all with their own workbench views.
 - **Approvals hub**: `/approvals` — review pending budget/creative/strategy approvals across all campaigns.
 
+## GitHub
+
+- **Repo**: https://github.com/milir-ai/spark-ai (branch: `main`)
+- **Push**: `bash scripts/push-github.sh` — writes to GitHub using the `GITHUB_TOKEN` secret
+- **Workflow**: small batches → commit → push after every task. End of task summary includes branch, latest hash, files changed, and verification.
+- `GITHUB_TOKEN` is stored as a Replit secret (repo scope). Never hardcode it.
+
 ## Gotchas
 
 - After schema changes, always run `pnpm --filter @workspace/db run push` then `pnpm --filter @workspace/api-spec run codegen` in that order.
