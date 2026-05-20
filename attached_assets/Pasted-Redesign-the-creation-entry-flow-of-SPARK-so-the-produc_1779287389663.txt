@@ -1,0 +1,100 @@
+Redesign the creation entry flow of SPARK so the product structure is clear before we redesign the rest of the app.
+
+Context:
+The current product is confusing because PPC is carrying too much of the whole platform.
+SPARK actually supports two real-world modes:
+1. integrated multi-channel campaigns
+2. standalone channel campaigns such as PPC-only
+
+We need to fix the entry architecture first.
+Do not redesign the whole app yet.
+Do not do a broad visual overhaul yet.
+Focus only on the first creation decision and the product structure around it.
+
+Goal:
+When a user wants to create work in SPARK, the app should clearly ask what kind of campaign they want to create.
+
+New creation model:
+The create flow must start with two choices:
+
+1. Integrated Campaign
+Use for:
+- product launches
+- cross-channel demand generation
+- regional campaigns
+- campaigns involving multiple channels and shared budget
+
+Integrated Campaign characteristics:
+- has one Campaign Owner
+- can assign multiple Channel Owners
+- has shared objective, audience, budget, approvals, and deliverables
+- channels receive work from the master campaign blueprint
+
+2. Channel Campaign
+Use for:
+- BAU work
+- standalone PPC / SEO / CRM / Social campaigns
+- channel-specific execution not requiring full cross-channel orchestration
+
+Channel Campaign characteristics:
+- has one primary owner, usually the Channel Owner
+- may optionally link to a parent integrated campaign
+- can operate independently
+
+Important product rule:
+Do not force users into PPC first.
+Do not assume every campaign starts as a PPC workflow.
+
+Required UX change:
+Add a proper first creation screen that asks:
+“What do you want to create?”
+
+This screen should present two clear options:
+- Integrated Campaign
+- Channel Campaign
+
+If user chooses Channel Campaign:
+show channel choices such as:
+- PPC
+- SEO
+- Social
+- CRM
+- Messaging
+- Creative
+
+If user chooses Integrated Campaign:
+route into a high-level campaign brief flow
+Do not build the entire brief flow yet unless needed.
+A lightweight placeholder or partial flow is acceptable.
+The important thing is to establish the correct product structure.
+
+Ownership model to reflect in the UI:
+- Campaign Owner
+- Channel Owner
+- Contributor
+- Approver
+
+For now, show this structurally in the create flow where relevant.
+Do not overbuild permissions logic yet.
+
+Information architecture intent:
+SPARK should clearly separate:
+- integrated campaign orchestration
+- channel-level execution
+
+Deliverables for this task:
+1. redesign the creation entry flow
+2. make the two campaign modes clear in the UI
+3. stop using PPC as the default implied creation model
+4. keep the app runnable
+5. keep the implementation coherent and focused
+
+Important constraints:
+- do not redesign the entire PPC workflow in this task
+- do not attempt a full visual overhaul in this task
+- do not overcomplicate backend changes unless necessary
+- focus on getting the product architecture and first user decision right
+
+Critical instruction:
+This task is only about fixing the first creation decision and clarifying product structure.
+Do not turn this into another broad refactor.
