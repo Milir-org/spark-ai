@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,464 +8,968 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import {
-  MonitorPlay, Plus, Upload, RefreshCw, Wand2, TrendingUp, TrendingDown,
-  CheckCircle, XCircle, AlertCircle, Clock, Loader2, Copy, Check, ChevronRight,
-  ChevronLeft, ArrowRight, Search, Target, DollarSign, BarChart2, Zap, Shield,
-  Eye, Globe, Tag, Flag, FileText, Settings, MoreHorizontal, ExternalLink,
-  Play, Pause, Edit, Trash2, Filter, Download, Bell, Brain, Lightbulb
+  MonitorPlay, Plus, Upload, RefreshCw, Wand2, CheckCircle, XCircle,
+  AlertCircle, Clock, Loader2, ChevronRight, ChevronLeft, Search, Target,
+  DollarSign, BarChart2, Zap, Shield, Globe, Flag, FileText, Settings,
+  MoreHorizontal, Edit, Play, Eye, Copy, Brain, Lightbulb, Sparkles,
+  TrendingUp, ArrowRight, ChevronDown, Download, Filter, Users, MapPin,
+  Rocket, Star
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-type CampaignStatus = "draft" | "data_check" | "keyword_plan" | "ai_plan" | "approval" | "ready" | "live" | "optimising" | "reporting" | "paused";
+type CampaignStatus = "draft" | "data_check" | "approval" | "live" | "optimising" | "paused" | "reporting";
 type Platform = "Google Ads" | "Microsoft Advertising" | "Baidu" | "Naver" | "Yahoo Japan";
-type CampaignSource = "standalone" | "linked" | "imported" | "ai_generated" | "adhoc";
-type CampaignType = "brand" | "non_brand" | "competitor" | "product" | "service" | "local" | "lead_gen" | "regional" | "rlsa" | "pmax" | "shopping" | "adhoc";
+type PrimaryGoal = "leads" | "sales" | "bookings" | "traffic" | "brand_protection" | "competitor_conquest" | "local_enquiries";
+type BudgetStyle = "conservative" | "balanced" | "aggressive";
 
-interface SearchCampaign {
+interface SparkCampaign {
   id: number;
   name: string;
-  platform: Platform;
-  source: CampaignSource;
-  type: CampaignType;
-  tags: string[];
-  objective: string;
+  platforms: Platform[];
+  goal: PrimaryGoal;
   status: CampaignStatus;
   budget: number;
   spend: number;
   avgCpc: number;
-  ctr: number;
   conversions: number;
   cpl: number;
-  qualifiedLeads: number;
   trackingStatus: "ok" | "warning" | "error";
-  syncStatus: "synced" | "pending" | "failed";
-  nextAiAction: string;
+  sparkRec: string;
   approvalStatus: "approved" | "pending" | "not_required" | "rejected";
   owner: string;
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const CAMPAIGNS: SearchCampaign[] = [
+const PLATFORM_COLORS: Record<Platform, string> = {
+  "Google Ads": "text-blue-400 bg-blue-500/10 border-blue-500/30",
+  "Microsoft Advertising": "text-cyan-400 bg-cyan-500/10 border-cyan-500/30",
+  "Baidu": "text-red-400 bg-red-500/10 border-red-500/30",
+  "Naver": "text-green-400 bg-green-500/10 border-green-500/30",
+  "Yahoo Japan": "text-purple-400 bg-purple-500/10 border-purple-500/30",
+};
+
+const PLATFORM_STATUS: Record<Platform, "connected" | "disconnected" | "coming_soon"> = {
+  "Google Ads": "connected",
+  "Microsoft Advertising": "connected",
+  "Baidu": "disconnected",
+  "Naver": "disconnected",
+  "Yahoo Japan": "coming_soon",
+};
+
+const GOAL_LABELS: Record<PrimaryGoal, string> = {
+  leads: "Generate Leads", sales: "Drive Sales", bookings: "Book Appointments",
+  traffic: "Website Traffic", brand_protection: "Brand Protection",
+  competitor_conquest: "Competitor Conquest", local_enquiries: "Local Enquiries",
+};
+
+const STATUS_STYLES: Record<CampaignStatus, string> = {
+  draft: "bg-muted/50 text-muted-foreground",
+  data_check: "bg-amber-500/15 text-amber-300",
+  approval: "bg-orange-500/15 text-orange-300",
+  live: "bg-green-500/15 text-green-300",
+  optimising: "bg-emerald-500/15 text-emerald-300",
+  paused: "bg-muted/50 text-muted-foreground",
+  reporting: "bg-indigo-500/15 text-indigo-300",
+};
+
+const STATUS_LABELS: Record<CampaignStatus, string> = {
+  draft: "Draft", data_check: "Data Check", approval: "Awaiting Approval",
+  live: "Live", optimising: "Optimising", paused: "Paused", reporting: "Reporting",
+};
+
+// ─── Mock Campaigns ───────────────────────────────────────────────────────────
+
+const MOCK_CAMPAIGNS: SparkCampaign[] = [
   {
-    id: 1, name: "Brand Search — Core", platform: "Google Ads", source: "linked", type: "brand",
-    tags: ["Q2 Growth", "Board Approved"], objective: "Leads", status: "live",
-    budget: 15000, spend: 12400, avgCpc: 1.82, ctr: 5.4, conversions: 312, cpl: 39.74, qualifiedLeads: 198,
-    trackingStatus: "ok", syncStatus: "synced", nextAiAction: "Raise bids on top 3 terms",
+    id: 1, name: "Brand Awareness — APAC Q2", platforms: ["Google Ads", "Microsoft Advertising"],
+    goal: "leads", status: "live", budget: 15000, spend: 12400, avgCpc: 1.82,
+    conversions: 312, cpl: 39.74, trackingStatus: "ok",
+    sparkRec: "Raise bids on top 3 brand terms — ROAS is 6.1x",
     approvalStatus: "approved", owner: "Alex Chen",
   },
   {
-    id: 2, name: "Non-Brand — Growth APAC", platform: "Google Ads", source: "ai_generated", type: "non_brand",
-    tags: ["Singapore SMEs", "High Intent", "Q2 Growth"], objective: "Leads", status: "optimising",
-    budget: 22000, spend: 18900, avgCpc: 3.91, ctr: 2.8, conversions: 247, cpl: 76.52, qualifiedLeads: 121,
-    trackingStatus: "ok", syncStatus: "synced", nextAiAction: "Add 14 negative keywords",
+    id: 2, name: "Non-Brand Search — Singapore SMEs", platforms: ["Google Ads"],
+    goal: "leads", status: "optimising", budget: 22000, spend: 18900, avgCpc: 3.91,
+    conversions: 247, cpl: 76.52, trackingStatus: "ok",
+    sparkRec: "Add 14 negative keywords to cut wasted spend by ~$1,840",
     approvalStatus: "approved", owner: "Sarah Park",
   },
   {
-    id: 3, name: "Competitor Conquest — SEMrush", platform: "Google Ads", source: "standalone", type: "competitor",
-    tags: ["Urgent Push", "Budget Sensitive"], objective: "Brand Protection", status: "live",
-    budget: 9000, spend: 8200, avgCpc: 5.12, ctr: 1.9, conversions: 58, cpl: 141.38, qualifiedLeads: 22,
-    trackingStatus: "warning", syncStatus: "synced", nextAiAction: "Pause low-conv. ad group",
+    id: 3, name: "Competitor Conquest — SEMrush", platforms: ["Google Ads"],
+    goal: "competitor_conquest", status: "live", budget: 9000, spend: 8200, avgCpc: 5.12,
+    conversions: 58, cpl: 141.38, trackingStatus: "warning",
+    sparkRec: "Pause low-conv. ad group — CPA is 2× target",
     approvalStatus: "approved", owner: "Alex Chen",
   },
   {
-    id: 4, name: "Bing Brand Search — UK", platform: "Microsoft Advertising", source: "imported", type: "brand",
-    tags: ["Q2 Growth"], objective: "Leads", status: "live",
-    budget: 5000, spend: 3100, avgCpc: 1.21, ctr: 4.8, conversions: 89, cpl: 34.83, qualifiedLeads: 67,
-    trackingStatus: "ok", syncStatus: "synced", nextAiAction: "Increase budget 15%",
-    approvalStatus: "approved", owner: "Priya Sharma",
-  },
-  {
-    id: 5, name: "Lead Gen — Enterprise Search", platform: "Google Ads", source: "ai_generated", type: "lead_gen",
-    tags: ["High Intent", "Test Campaign"], objective: "Leads", status: "approval",
-    budget: 18000, spend: 0, avgCpc: 0, ctr: 0, conversions: 0, cpl: 0, qualifiedLeads: 0,
-    trackingStatus: "warning", syncStatus: "pending", nextAiAction: "Awaiting budget approval",
+    id: 4, name: "Enterprise Lead Gen", platforms: ["Google Ads", "Microsoft Advertising"],
+    goal: "leads", status: "approval", budget: 18000, spend: 0, avgCpc: 0,
+    conversions: 0, cpl: 0, trackingStatus: "warning",
+    sparkRec: "Awaiting budget approval before launch",
     approvalStatus: "pending", owner: "Sarah Park",
   },
   {
-    id: 6, name: "Baidu Brand — China Expansion", platform: "Baidu", source: "standalone", type: "regional",
-    tags: ["Test Campaign", "Budget Sensitive"], objective: "Brand Awareness", status: "keyword_plan",
-    budget: 12000, spend: 0, avgCpc: 0, ctr: 0, conversions: 0, cpl: 0, qualifiedLeads: 0,
-    trackingStatus: "error", syncStatus: "failed", nextAiAction: "Complete keyword localisation",
+    id: 5, name: "Baidu China Expansion", platforms: ["Baidu"],
+    goal: "brand_protection", status: "data_check", budget: 12000, spend: 0, avgCpc: 0,
+    conversions: 0, cpl: 0, trackingStatus: "error",
+    sparkRec: "Localise keywords to Simplified Chinese before proceeding",
     approvalStatus: "not_required", owner: "Priya Sharma",
   },
 ];
 
-const WORKFLOW_STAGES: { key: CampaignStatus; label: string; color: string }[] = [
-  { key: "draft", label: "Draft", color: "bg-muted/60 text-muted-foreground" },
-  { key: "data_check", label: "Data Check", color: "bg-amber-500/20 text-amber-300" },
-  { key: "keyword_plan", label: "Keyword Plan", color: "bg-blue-500/20 text-blue-300" },
-  { key: "ai_plan", label: "AI Plan", color: "bg-purple-500/20 text-purple-300" },
-  { key: "approval", label: "Approval", color: "bg-orange-500/20 text-orange-300" },
-  { key: "ready", label: "Ready to Launch", color: "bg-cyan-500/20 text-cyan-300" },
-  { key: "live", label: "Live", color: "bg-green-500/20 text-green-300" },
-  { key: "optimising", label: "Optimising", color: "bg-emerald-500/20 text-emerald-300" },
-  { key: "reporting", label: "Reporting", color: "bg-indigo-500/20 text-indigo-300" },
-];
-
-const SOURCE_LABELS: Record<CampaignSource, string> = {
-  standalone: "Standalone", linked: "Linked to SPARK", imported: "Imported", ai_generated: "AI-Generated", adhoc: "Ad-hoc",
-};
-
-const TYPE_LABELS: Record<CampaignType, string> = {
-  brand: "Brand Search", non_brand: "Non-Brand Search", competitor: "Competitor Search",
-  product: "Product Search", service: "Service Search", local: "Local Search",
-  lead_gen: "Lead Gen Search", regional: "Regional Search", rlsa: "RLSA (placeholder)",
-  pmax: "Performance Max (placeholder)", shopping: "Shopping Search (placeholder)", adhoc: "Ad-hoc",
-};
-
-const TAG_COLORS: Record<string, string> = {
-  "Q2 Growth": "bg-violet-500/15 text-violet-300 border-violet-500/30",
-  "Singapore SMEs": "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-  "High Intent": "bg-green-500/15 text-green-300 border-green-500/30",
-  "Urgent Push": "bg-red-500/15 text-red-300 border-red-500/30",
-  "Board Approved": "bg-blue-500/15 text-blue-300 border-blue-500/30",
-  "Budget Sensitive": "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  "Test Campaign": "bg-pink-500/15 text-pink-300 border-pink-500/30",
-};
-
-const PLATFORM_CONFIG: Record<Platform, { color: string; status: "connected" | "disconnected" | "coming_soon" }> = {
-  "Google Ads": { color: "text-blue-400", status: "connected" },
-  "Microsoft Advertising": { color: "text-cyan-400", status: "connected" },
-  "Baidu": { color: "text-red-400", status: "disconnected" },
-  "Naver": { color: "text-green-400", status: "disconnected" },
-  "Yahoo Japan": { color: "text-purple-400", status: "coming_soon" },
-};
-
 // ─── Utility Components ───────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: CampaignStatus }) {
-  const stage = WORKFLOW_STAGES.find((s) => s.key === status);
-  if (!stage) return null;
-  return <Badge variant="outline" className={`text-xs border-0 ${stage.color}`}>{stage.label}</Badge>;
+function PlatformChip({ platform }: { platform: Platform }) {
+  return (
+    <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${PLATFORM_COLORS[platform]}`}>
+      {platform === "Microsoft Advertising" ? "Bing" : platform.split(" ")[0]}
+    </span>
+  );
 }
 
 function TrackingBadge({ status }: { status: "ok" | "warning" | "error" }) {
-  if (status === "ok") return <span className="flex items-center gap-1 text-green-400 text-xs"><CheckCircle size={11} /> OK</span>;
-  if (status === "warning") return <span className="flex items-center gap-1 text-amber-400 text-xs"><AlertCircle size={11} /> Warning</span>;
-  return <span className="flex items-center gap-1 text-red-400 text-xs"><XCircle size={11} /> Error</span>;
+  if (status === "ok") return <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={11} />OK</span>;
+  if (status === "warning") return <span className="text-xs text-amber-400 flex items-center gap-1"><AlertCircle size={11} />Warning</span>;
+  return <span className="text-xs text-red-400 flex items-center gap-1"><XCircle size={11} />Error</span>;
 }
 
-function ApprovalBadge({ status }: { status: "approved" | "pending" | "not_required" | "rejected" }) {
-  const cfg = {
+function ApprovalBadge({ status }: { status: SparkCampaign["approvalStatus"] }) {
+  const cfg: Record<string, string> = {
     approved: "text-green-300 border-green-500/30",
     pending: "text-amber-300 border-amber-500/30",
     not_required: "text-muted-foreground border-border",
     rejected: "text-red-300 border-red-500/30",
-  }[status];
-  const label = { approved: "Approved", pending: "Pending", not_required: "—", rejected: "Rejected" }[status];
-  return <Badge variant="outline" className={`text-xs ${cfg}`}>{label}</Badge>;
+  };
+  const label: Record<string, string> = { approved: "Approved", pending: "Pending", not_required: "—", rejected: "Rejected" };
+  return <Badge variant="outline" className={`text-xs ${cfg[status]}`}>{label[status]}</Badge>;
 }
 
-function PlatformBadge({ platform }: { platform: Platform }) {
-  const cfg = PLATFORM_CONFIG[platform];
-  return <span className={`text-xs font-medium ${cfg.color}`}>{platform}</span>;
+// ─── SPARK Brain Panel ────────────────────────────────────────────────────────
+
+interface BrainContent {
+  headline: string;
+  bullets: string[];
+  warnings?: string[];
+  tip?: string;
 }
 
-// ─── Workflow Status Board ────────────────────────────────────────────────────
+function getBrainContent(step: number, form: any): BrainContent {
+  switch (step) {
+    case 0: return {
+      headline: "Setting Your Campaign Goal",
+      bullets: [
+        "Your primary goal drives how SPARK optimises bids and tracks success.",
+        "Secondary goals are measured but don't control bidding.",
+        form.primaryGoal ? `You've chosen: ${GOAL_LABELS[form.primaryGoal as PrimaryGoal]}. SPARK will optimise for this outcome.` : "Choose a primary goal to continue.",
+        "Guardrails protect your budget — always set a max daily spend.",
+      ],
+      tip: "Not sure? 'Generate Leads' is the most common goal for B2B businesses running paid search.",
+    };
+    case 1: return {
+      headline: "Understanding Your Offer & Audience",
+      bullets: [
+        form.product ? `Promoting: "${form.product}". ${form.product.length < 10 ? "Add more detail so SPARK can generate better keyword and ad suggestions." : "Good — SPARK can work with this."}` : "Tell SPARK what you're promoting.",
+        form.landingPage ? `Landing page set. SPARK will check for tracking before launch.` : "⚠ No landing page yet — you'll need one before launch.",
+        form.geography ? `Target geography: ${form.geography}.` : "Geography not set — SPARK will default to global.",
+        "Exclusions help SPARK avoid wasted spend from day one.",
+      ],
+      warnings: !form.product ? ["A vague or missing product description leads to weaker keyword suggestions."] : [],
+      tip: "The more specific your offer, the better SPARK's keyword and ad suggestions will be.",
+    };
+    case 2: return {
+      headline: "Platform & Budget Recommendations",
+      bullets: [
+        "Google Ads: Largest search volume, best for most markets. Recommended allocation: 65–70% of budget.",
+        "Microsoft Advertising: 15–20% lower CPCs than Google. Great for adding reach. Recommended: 20–25%.",
+        "Baidu: Only for China-focused campaigns. Requires Simplified Chinese keywords.",
+        "Naver: South Korea's dominant search engine. Separate keyword strategy needed.",
+        form.totalBudget ? `$${Number(form.totalBudget).toLocaleString()}/month. SPARK suggests $${Math.round(Number(form.totalBudget) * 0.7).toLocaleString()} Google / $${Math.round(Number(form.totalBudget) * 0.2).toLocaleString()} Bing as a starting split.` : "Set your budget to see the recommended platform split.",
+      ],
+      tip: "Start with Google Ads + Microsoft Advertising. Add other platforms after 30 days of performance data.",
+    };
+    case 3: return {
+      headline: "Keyword & Search Intent Analysis",
+      bullets: [
+        "High-intent keywords convert better but cost more. Mix exact match high-intent with phrase match for volume.",
+        form.brandKeywords ? `Brand keywords detected. SPARK recommends Exact match for brand terms to control CPCs.` : "Add brand keywords to protect your brand from competitor bidding.",
+        form.negativeKeywords ? `${form.negativeKeywords.split(",").filter(Boolean).length} negative keywords added. SPARK typically recommends 20–30 at launch.` : "⚠ No negative keywords yet — this is where budget gets wasted.",
+        "SPARK will generate platform-specific keyword lists in the next step.",
+      ],
+      warnings: !form.negativeKeywords ? ["Missing negative keywords is one of the most common causes of wasted search ad spend."] : [],
+      tip: "Think about what your customers would NOT type. Those are your negative keywords.",
+    };
+    case 4: return {
+      headline: "Campaign Pack Generation",
+      bullets: [
+        "SPARK has generated ad copy based on your goal, offer, and keywords.",
+        "Headlines should include your primary keyword, your offer, and a differentiator.",
+        "Each platform will get its own ad copy tailored to its format and character limits.",
+        "UTM tagging ensures every click is tracked back to the right campaign and keyword.",
+        "Review the tracking checklist carefully — missing GA4 events are the #1 launch blocker.",
+      ],
+      tip: "Click 'Regenerate' on any section to get fresh AI suggestions.",
+    };
+    case 5: return {
+      headline: "Launch Readiness Check",
+      bullets: [
+        "Review every section before requesting approval.",
+        "Your Launch Readiness Score reflects how complete and risk-free the campaign is.",
+        "Platform drafts can be created in SPARK first — syncing to live platforms requires approval.",
+        "Once approved, SPARK will push drafts to your connected ad accounts.",
+      ],
+      warnings: ["Do not launch without verified conversion tracking. Smart Bidding requires conversion data to optimise."],
+      tip: "Save Draft to keep working. Request Approval when ready to go live.",
+    };
+    default: return { headline: "SPARK Brain", bullets: [] };
+  }
+}
 
-function WorkflowBoard({ campaigns }: { campaigns: SearchCampaign[] }) {
-  const counts = WORKFLOW_STAGES.reduce((acc, s) => {
-    acc[s.key] = campaigns.filter((c) => c.status === s.key).length;
-    return acc;
-  }, {} as Record<string, number>);
+function SparkBrainPanel({ step, form }: { step: number; form: any }) {
+  const content = getBrainContent(step, form);
+  return (
+    <div className="flex flex-col gap-4 h-full">
+      <div className="flex items-center gap-2 pb-2 border-b border-border/40">
+        <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center">
+          <Brain size={14} className="text-primary" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-primary">SPARK Brain</p>
+          <p className="text-xs text-muted-foreground">AI guidance</p>
+        </div>
+      </div>
+
+      <div className="flex-1 space-y-4 overflow-y-auto">
+        <div>
+          <p className="text-sm font-semibold mb-2">{content.headline}</p>
+          <ul className="space-y-2">
+            {content.bullets.map((b, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Sparkles size={10} className="text-primary mt-0.5 shrink-0" />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {content.warnings && content.warnings.length > 0 && (
+          <div className="space-y-1.5">
+            {content.warnings.map((w, i) => (
+              <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+                <AlertCircle size={11} className="shrink-0 mt-0.5" />
+                {w}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {content.tip && (
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
+            <Lightbulb size={11} className="shrink-0 mt-0.5" />
+            <span>{content.tip}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Wizard Step Forms ────────────────────────────────────────────────────────
+
+const SECONDARY_GOALS: { key: PrimaryGoal; label: string }[] = [
+  { key: "leads", label: "Generate Leads" },
+  { key: "sales", label: "Drive Sales" },
+  { key: "bookings", label: "Book Appointments" },
+  { key: "traffic", label: "Website Traffic" },
+  { key: "brand_protection", label: "Brand Protection" },
+  { key: "competitor_conquest", label: "Competitor Conquest" },
+  { key: "local_enquiries", label: "Local Enquiries" },
+];
+
+function GoalStep({ form, setField }: { form: any; setField: (k: string, v: any) => void }) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  return (
+    <div className="space-y-6">
+      <div>
+        <Label className="text-sm font-semibold">What's the primary goal of this campaign? *</Label>
+        <p className="text-xs text-muted-foreground mb-3 mt-1">Pick one. This drives how SPARK optimises your bids and measures success.</p>
+        <div className="grid grid-cols-2 gap-2">
+          {SECONDARY_GOALS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setField("primaryGoal", key)}
+              className={`text-left p-3 rounded-xl border text-sm transition-all ${form.primaryGoal === key ? "border-primary bg-primary/10 text-primary shadow-[0_0_0_1px] shadow-primary/30" : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"}`}
+            >
+              <p className="font-medium">{label}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {form.primaryGoal && (
+        <div>
+          <Label className="text-sm font-semibold">Any secondary goals to track?</Label>
+          <p className="text-xs text-muted-foreground mb-2 mt-1">These won't control bidding, but SPARK will monitor and report on them.</p>
+          <div className="flex flex-wrap gap-2">
+            {SECONDARY_GOALS.filter((g) => g.key !== form.primaryGoal).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => {
+                  const current: string[] = form.secondaryGoals ?? [];
+                  setField("secondaryGoals", current.includes(key) ? current.filter((k: string) => k !== key) : [...current, key]);
+                }}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${(form.secondaryGoals ?? []).includes(key) ? "border-primary/60 bg-primary/10 text-primary" : "border-border/50 text-muted-foreground hover:border-border"}`}
+              >{label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <Label className="text-sm font-semibold">Campaign Urgency</Label>
+        <div className="flex gap-2 mt-2">
+          {[["test", "Test", "Low spend, learn first"], ["normal", "Normal", "Standard pacing"], ["aggressive", "Aggressive", "Spend fully, maximise reach"]].map(([v, l, desc]) => (
+            <button
+              key={v}
+              onClick={() => setField("urgency", v)}
+              className={`flex-1 p-3 rounded-xl border text-left transition-all text-xs ${form.urgency === v ? "border-primary bg-primary/10" : "border-border/60 text-muted-foreground hover:border-border"}`}
+            >
+              <p className={`font-semibold text-sm ${form.urgency === v ? "text-primary" : ""}`}>{l}</p>
+              <p className="text-muted-foreground mt-0.5">{desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={() => setShowAdvanced(!showAdvanced)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+        <ChevronDown size={13} className={`transition-transform ${showAdvanced ? "rotate-180" : ""}`} /> Advanced Guardrails
+      </button>
+
+      {showAdvanced && (
+        <div className="grid grid-cols-2 gap-4 p-4 rounded-xl border border-border/40 bg-muted/10">
+          <div><Label className="text-xs">Max CPL ($)</Label><Input placeholder="e.g. 120" type="number" className="mt-1 h-8" value={form.maxCpl ?? ""} onChange={(e) => setField("maxCpl", e.target.value)} /></div>
+          <div><Label className="text-xs">Max Daily Spend ($)</Label><Input placeholder="e.g. 500" type="number" className="mt-1 h-8" value={form.maxDaily ?? ""} onChange={(e) => setField("maxDaily", e.target.value)} /></div>
+          <div className="col-span-2">
+            <Label className="text-xs">Location Restrictions</Label>
+            <Input placeholder="e.g. Exclude: USA, UK" className="mt-1 h-8" value={form.locationRestrictions ?? ""} onChange={(e) => setField("locationRestrictions", e.target.value)} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OfferAudienceStep({ form, setField }: { form: any; setField: (k: string, v: any) => void }) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <Label className="text-sm font-semibold">What are you promoting? *</Label>
+        <p className="text-xs text-muted-foreground mt-1 mb-2">Be specific. This helps SPARK generate better keywords and ad copy.</p>
+        <Textarea
+          placeholder="e.g. SPARK AI — an AI-powered marketing platform for B2B SaaS companies. Helps marketing managers plan and launch campaigns without needing an agency."
+          value={form.product ?? ""}
+          onChange={(e) => setField("product", e.target.value)}
+          className="h-24 text-sm resize-none"
+        />
+      </div>
+      <div>
+        <Label className="text-sm font-semibold">What's the offer or call-to-action?</Label>
+        <Input placeholder="e.g. Free 14-day trial, no credit card required" className="mt-2 h-9" value={form.offer ?? ""} onChange={(e) => setField("offer", e.target.value)} />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label className="text-sm font-semibold">Target Geography *</Label>
+          <Input placeholder="e.g. Singapore, Malaysia, Australia" className="mt-2 h-9" value={form.geography ?? ""} onChange={(e) => setField("geography", e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-sm font-semibold">Target Customer Type</Label>
+          <Input placeholder="e.g. Marketing managers at B2B SaaS" className="mt-2 h-9" value={form.audience ?? ""} onChange={(e) => setField("audience", e.target.value)} />
+        </div>
+      </div>
+      <div>
+        <Label className="text-sm font-semibold">Landing Page URL *</Label>
+        <Input placeholder="https://yoursite.com/lp/offer" className="mt-2 h-9 font-mono text-xs" value={form.landingPage ?? ""} onChange={(e) => setField("landingPage", e.target.value)} />
+      </div>
+      <div>
+        <Label className="text-sm font-semibold">Exclusions or Restrictions</Label>
+        <Input placeholder="e.g. No students, no job seekers, no free plans" className="mt-2 h-9" value={form.exclusions ?? ""} onChange={(e) => setField("exclusions", e.target.value)} />
+      </div>
+    </div>
+  );
+}
+
+const ALL_PLATFORMS: Platform[] = ["Google Ads", "Microsoft Advertising", "Baidu", "Naver", "Yahoo Japan"];
+
+function PlatformsBudgetStep({ form, setField }: { form: any; setField: (k: string, v: any) => void }) {
+  const selectedPlatforms: Platform[] = form.platforms ?? ["Google Ads", "Microsoft Advertising"];
+  const totalBudget = Number(form.totalBudget ?? 0);
+
+  const PLATFORM_SPLITS: Record<Platform, number> = {
+    "Google Ads": 0.70, "Microsoft Advertising": 0.20, "Baidu": 0, "Naver": 0.10, "Yahoo Japan": 0,
+  };
+
+  const platformCards = [
+    { platform: "Google Ads" as Platform, cpcRange: "$1.50 – $6.00", template: "Lead Gen Search", note: "Largest search volume in most markets." },
+    { platform: "Microsoft Advertising" as Platform, cpcRange: "$0.90 – $4.00", template: "Brand + Non-Brand", note: "~15–20% lower CPCs than Google. Good for incremental reach." },
+    { platform: "Baidu" as Platform, cpcRange: "¥2 – ¥15", template: "Brand Search (CN)", note: "China only. Requires Simplified Chinese keywords and a local licence." },
+    { platform: "Naver" as Platform, cpcRange: "₩200 – ₩1,500", template: "Brand Search (KR)", note: "South Korea's dominant search engine. Separate keyword strategy." },
+    { platform: "Yahoo Japan" as Platform, cpcRange: "—", template: "Coming Soon", note: "Integration planned for Q3. Pre-configure API credentials now." },
+  ];
+
+  const togglePlatform = (p: Platform) => {
+    if (PLATFORM_STATUS[p] === "coming_soon") return;
+    const current = form.platforms ?? ["Google Ads", "Microsoft Advertising"];
+    setField("platforms", current.includes(p) ? current.filter((x: Platform) => x !== p) : [...current, p]);
+  };
 
   return (
-    <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
-      {WORKFLOW_STAGES.map((stage, idx) => (
-        <Card key={stage.key} className="border-border/50 bg-card/60">
-          <CardContent className="p-3 text-center">
-            <div className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold mb-1 ${stage.color}`}>
-              {counts[stage.key] ?? 0}
-            </div>
-            <p className="text-xs text-muted-foreground leading-tight">{stage.label}</p>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-6">
+      <div>
+        <Label className="text-sm font-semibold">Platform Selection Mode</Label>
+        <div className="flex gap-3 mt-2">
+          {[["recommended", "Let SPARK recommend"], ["manual", "I'll choose manually"]].map(([v, l]) => (
+            <button key={v} onClick={() => setField("platformMode", v)} className={`flex-1 p-3 rounded-xl border text-sm transition-all ${form.platformMode === v || (!form.platformMode && v === "recommended") ? "border-primary bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>{l}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">Select Platforms</Label>
+        <p className="text-xs text-muted-foreground">SPARK will create a separate plan for each platform. You control one unified budget.</p>
+        <div className="grid grid-cols-1 gap-2 mt-2">
+          {platformCards.map(({ platform, cpcRange, template, note }) => {
+            const isSelected = selectedPlatforms.includes(platform);
+            const status = PLATFORM_STATUS[platform];
+            const isComingSoon = status === "coming_soon";
+            const allocatedBudget = totalBudget ? Math.round(totalBudget * PLATFORM_SPLITS[platform]) : null;
+
+            return (
+              <button
+                key={platform}
+                onClick={() => togglePlatform(platform)}
+                disabled={isComingSoon}
+                className={`text-left p-3.5 rounded-xl border transition-all ${isSelected ? `${PLATFORM_COLORS[platform]} border-opacity-60` : "border-border/50 hover:border-border"} ${isComingSoon ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${isSelected ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                      {isSelected && <CheckCircle size={10} className="text-white" />}
+                    </div>
+                    <span className="font-semibold text-sm text-foreground">{platform}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isComingSoon && <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-300">Coming Soon</Badge>}
+                    {!isComingSoon && status === "connected" && <Badge variant="outline" className="text-xs border-green-500/30 text-green-300">Connected</Badge>}
+                    {!isComingSoon && status === "disconnected" && <Badge variant="outline" className="text-xs border-border text-muted-foreground">Not Connected</Badge>}
+                    {isSelected && allocatedBudget ? <span className="text-xs font-bold text-foreground">${allocatedBudget.toLocaleString()}/mo</span> : null}
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground ml-6">
+                  <span>Est. CPC: <span className="text-foreground">{cpcRange}</span></span>
+                  <span>Template: <span className="text-foreground">{template}</span></span>
+                  <span className="hidden sm:inline">{note}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2">
+          <Label className="text-sm font-semibold">Total Monthly Budget ($) *</Label>
+          <Input placeholder="e.g. 15000" type="number" className="mt-2 h-9" value={form.totalBudget ?? ""} onChange={(e) => setField("totalBudget", e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-sm font-semibold">Duration</Label>
+          <Select value={form.duration ?? "ongoing"} onValueChange={(v) => setField("duration", v)}>
+            <SelectTrigger className="mt-2 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ongoing">Ongoing</SelectItem>
+              <SelectItem value="1_month">1 Month</SelectItem>
+              <SelectItem value="3_months">3 Months</SelectItem>
+              <SelectItem value="6_months">6 Months</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="text-sm font-semibold">Budget Pacing Style</Label>
+        <div className="flex gap-2 mt-2">
+          {[["conservative", "Conservative", "Spend 80% of daily budget. Less risk."], ["balanced", "Balanced", "Standard Google pacing."], ["aggressive", "Aggressive", "Spend fully each day. Max reach."]].map(([v, l, desc]) => (
+            <button key={v} onClick={() => setField("budgetStyle", v)} className={`flex-1 p-3 rounded-xl border text-xs text-left transition-all ${form.budgetStyle === v ? "border-primary bg-primary/10" : "border-border/60 text-muted-foreground"}`}>
+              <p className={`font-semibold ${form.budgetStyle === v ? "text-primary" : ""}`}>{l}</p>
+              <p className="mt-0.5 text-muted-foreground">{desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function KeywordsStep({ form, setField }: { form: any; setField: (k: string, v: any) => void }) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  return (
+    <div className="space-y-5">
+      <div>
+        <Label className="text-sm font-semibold">What would your customers search for? *</Label>
+        <p className="text-xs text-muted-foreground mt-1 mb-2">Describe it naturally. SPARK will generate keyword groups from your answer.</p>
+        <Textarea placeholder="e.g. Marketing software that helps small teams run campaigns without needing to hire a big agency. People might search for alternatives to expensive tools like HubSpot or Marketo." value={form.searchIntent ?? ""} onChange={(e) => setField("searchIntent", e.target.value)} className="h-20 text-sm resize-none" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label className="text-sm font-semibold">Brand Keywords</Label>
+          <Textarea placeholder="spark ai, spark ai platform, spark marketing" value={form.brandKeywords ?? ""} onChange={(e) => setField("brandKeywords", e.target.value)} className="mt-2 h-20 font-mono text-xs resize-none" />
+        </div>
+        <div>
+          <Label className="text-sm font-semibold">Service / Product Keywords</Label>
+          <Textarea placeholder="marketing automation software, ai campaign manager" value={form.serviceKeywords ?? ""} onChange={(e) => setField("serviceKeywords", e.target.value)} className="mt-2 h-20 font-mono text-xs resize-none" />
+        </div>
+        <div>
+          <Label className="text-sm font-semibold">Competitor Keywords</Label>
+          <Textarea placeholder="hubspot alternative, marketo pricing" value={form.competitorKeywords ?? ""} onChange={(e) => setField("competitorKeywords", e.target.value)} className="mt-2 h-16 font-mono text-xs resize-none" />
+        </div>
+        <div>
+          <Label className="text-sm font-semibold text-red-400">Negative Keywords <span className="text-muted-foreground font-normal">(important!)</span></Label>
+          <Textarea placeholder="free, tutorial, open source, jobs, reddit" value={form.negativeKeywords ?? ""} onChange={(e) => setField("negativeKeywords", e.target.value)} className="mt-2 h-16 font-mono text-xs resize-none border-red-500/20" />
+        </div>
+      </div>
+
+      <div>
+        <Label className="text-sm font-semibold">Default Match Type</Label>
+        <div className="flex gap-2 mt-2">
+          {[["exact", "Exact Match", "Precise, lower volume, higher intent"],
+            ["phrase", "Phrase Match", "Balanced — recommended for most campaigns"],
+            ["broad", "Broad Match", "High reach, needs strong negatives"]].map(([v, l, desc]) => (
+            <button key={v} onClick={() => setField("matchType", v)} className={`flex-1 p-3 rounded-xl border text-xs text-left transition-all ${form.matchType === v ? "border-primary bg-primary/10" : "border-border/60 text-muted-foreground"}`}>
+              <p className={`font-semibold ${form.matchType === v ? "text-primary" : ""}`}>{l}</p>
+              <p className="mt-0.5 text-muted-foreground">{desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={() => setShowAdvanced(!showAdvanced)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+        <ChevronDown size={13} className={`transition-transform ${showAdvanced ? "rotate-180" : ""}`} /> Advanced: Location Keywords & Platform-Specific Notes
+      </button>
+      {showAdvanced && (
+        <div className="p-4 rounded-xl border border-border/40 bg-muted/10 space-y-3">
+          <div><Label className="text-xs">Location Intent Keywords</Label><Input placeholder="e.g. marketing agency singapore, crm software australia" className="mt-1 h-8 font-mono text-xs" /></div>
+          <p className="text-xs text-muted-foreground"><span className="text-primary font-medium">Platform note:</span> Baidu and Naver require platform-specific keyword strategies. SPARK will generate Simplified Chinese and Korean keyword suggestions after you complete this step.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdsTrackingStep({ form, setField }: { form: any; setField: (k: string, v: any) => void }) {
+  const [regenerating, setRegenerating] = useState(false);
+  const mockHeadlines = [
+    form.product?.split(" ").slice(0, 3).join(" ") || "SPARK AI",
+    "AI-Powered Campaign Manager",
+    form.offer || "Free 14-Day Trial",
+    "Replace Your Marketing Agency",
+    "Plan. Launch. Optimise. With AI.",
+  ];
+  const mockDescs = [
+    `${form.product ? form.product.slice(0, 60) + "…" : "AI marketing platform"} No expertise required.`,
+    `${form.offer || "Start free today"}. Connect ${(form.platforms ?? ["Google Ads"]).join(", ")} from one command centre.`,
+  ];
+
+  const regen = async () => { setRegenerating(true); await new Promise((r) => setTimeout(r, 900)); setRegenerating(false); };
+
+  const trackingChecklist = [
+    { label: "Landing page URL", done: !!form.landingPage },
+    { label: "GA4 conversion event", done: !!(form.ga4Event ?? true) },
+    { label: "UTM tagging template", done: !!(form.landingPage) },
+    { label: "CRM lead source mapping", done: false },
+    { label: "Call tracking", done: false },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <Label className="text-sm font-semibold">Generated Ad Copy</Label>
+            <p className="text-xs text-muted-foreground">Based on your goal, offer, and keywords</p>
+          </div>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={regen} disabled={regenerating}>
+            {regenerating ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Regenerate
+          </Button>
+        </div>
+        <div className="p-4 rounded-xl border border-border/50 bg-card/60 space-y-3">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1.5">Headlines (up to 15, shown in rotation)</p>
+            <div className="flex flex-wrap gap-1.5">
+              {mockHeadlines.map((h, i) => <span key={i} className="text-xs px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary">{h}</span>)}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1.5">Descriptions</p>
+            {mockDescs.map((d, i) => <p key={i} className="text-xs bg-muted/20 border border-border/30 rounded px-3 py-2 mb-1.5">{d}</p>)}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {[["Sitelinks", "3 sitelinks generated"], ["Callout Extensions", "5 callouts generated"], ["Structured Snippets", "Placeholder — configure after launch"], ["CTA Suggestion", form.offer || "Start Free Trial"]].map(([label, value]) => (
+          <div key={label} className="p-3 rounded-xl border border-border/40 bg-card/40">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="text-sm font-medium mt-0.5">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <Separator className="bg-border/40" />
+
+      <div>
+        <Label className="text-sm font-semibold">Tracking Checklist</Label>
+        <div className="mt-3 space-y-2">
+          {trackingChecklist.map((item, i) => (
+            <div key={i} className="flex items-center gap-3">
+              {item.done
+                ? <CheckCircle size={15} className="text-green-400 shrink-0" />
+                : <XCircle size={15} className="text-muted-foreground shrink-0" />}
+              <span className={`text-sm ${item.done ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
+              {!item.done && <Badge variant="outline" className="text-xs border-amber-500/30 text-amber-300 ml-auto">Needed before launch</Badge>}
+            </div>
+          ))}
+        </div>
+        <div className="mt-3">
+          <Label className="text-xs">GA4 Conversion Event</Label>
+          <Input placeholder="e.g. generate_lead" className="mt-1 h-8 font-mono text-xs" value={form.ga4Event ?? "generate_lead"} onChange={(e) => setField("ga4Event", e.target.value)} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewStep({ form }: { form: any }) {
+  const selectedPlatforms: Platform[] = form.platforms ?? ["Google Ads", "Microsoft Advertising"];
+  const budget = Number(form.totalBudget ?? 0);
+  const SPLITS: Record<Platform, number> = { "Google Ads": 0.70, "Microsoft Advertising": 0.20, "Baidu": 0.05, "Naver": 0.05, "Yahoo Japan": 0 };
+
+  const approvals = [
+    { label: "Budget Approval", done: false },
+    { label: "Keyword Approval", done: !!(form.brandKeywords || form.serviceKeywords) },
+    { label: "Ad Copy Approval", done: !!(form.product) },
+    { label: "Tracking Approval", done: !!(form.landingPage && form.ga4Event) },
+    { label: "Launch Approval", done: false },
+  ];
+
+  const score = Math.round((approvals.filter((a) => a.done).length / approvals.length) * 100);
+
+  return (
+    <div className="space-y-5">
+      <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="font-semibold text-sm">Campaign Summary</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Launch Readiness</span>
+            <span className={`text-sm font-bold ${score >= 80 ? "text-green-400" : score >= 50 ? "text-amber-400" : "text-red-400"}`}>{score}%</span>
+          </div>
+        </div>
+        <Progress value={score} className="h-2" />
+        <div className="grid grid-cols-2 gap-3 text-xs">
+          <div><p className="text-muted-foreground">Primary Goal</p><p className="font-medium">{form.primaryGoal ? GOAL_LABELS[form.primaryGoal as PrimaryGoal] : "—"}</p></div>
+          <div><p className="text-muted-foreground">Urgency</p><p className="font-medium capitalize">{form.urgency ?? "Normal"}</p></div>
+          <div><p className="text-muted-foreground">Geography</p><p className="font-medium">{form.geography ?? "—"}</p></div>
+          <div><p className="text-muted-foreground">Monthly Budget</p><p className="font-medium">{budget ? `$${budget.toLocaleString()}` : "—"}</p></div>
+          <div><p className="text-muted-foreground">Match Type</p><p className="font-medium capitalize">{form.matchType ?? "Phrase"}</p></div>
+          <div><p className="text-muted-foreground">Pacing Style</p><p className="font-medium capitalize">{form.budgetStyle ?? "Balanced"}</p></div>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold mb-2">Platform Campaign Plans</p>
+        <div className="space-y-2">
+          {selectedPlatforms.map((p) => (
+            <div key={p} className={`flex items-center justify-between p-3 rounded-xl border ${PLATFORM_COLORS[p]}`}>
+              <div>
+                <p className="font-medium text-sm">{p}</p>
+                <p className="text-xs text-muted-foreground">{budget ? `$${Math.round(budget * SPLITS[p]).toLocaleString()}/month allocated` : "Budget TBD"} · {PLATFORM_STATUS[p] === "connected" ? "Ready to draft" : "Account not connected"}</p>
+              </div>
+              <Badge variant="outline" className={`text-xs ${PLATFORM_STATUS[p] === "connected" ? "border-green-500/30 text-green-300" : "border-border text-muted-foreground"}`}>
+                {PLATFORM_STATUS[p] === "connected" ? "Ready" : "Not Connected"}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold mb-2">Approval Checklist</p>
+        <div className="space-y-2">
+          {approvals.map((item, i) => (
+            <div key={i} className="flex items-center gap-3">
+              {item.done ? <CheckCircle size={15} className="text-green-400 shrink-0" /> : <XCircle size={15} className="text-muted-foreground shrink-0" />}
+              <span className={`text-sm ${item.done ? "" : "text-muted-foreground"}`}>{item.label}</span>
+              {!item.done && <Badge variant="outline" className="text-xs border-amber-500/30 text-amber-300 ml-auto">Required</Badge>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 pt-2">
+        <Button variant="outline" size="sm" className="gap-1.5"><FileText size={13} /> Save Draft</Button>
+        <Button variant="outline" size="sm" className="gap-1.5"><Shield size={13} /> Request Approval</Button>
+        <Button variant="outline" size="sm" className="gap-1.5"><Play size={13} /> Create Platform Drafts</Button>
+        <Button size="sm" className="gap-1.5"><Rocket size={13} /> Simulate Launch</Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Guided Wizard Modal ──────────────────────────────────────────────────────
+
+const WIZARD_STEPS = [
+  { label: "Goal", icon: <Target size={13} /> },
+  { label: "Offer & Audience", icon: <Users size={13} /> },
+  { label: "Platforms & Budget", icon: <DollarSign size={13} /> },
+  { label: "Keywords", icon: <Search size={13} /> },
+  { label: "Ads & Tracking", icon: <Wand2 size={13} /> },
+  { label: "Review", icon: <CheckCircle size={13} /> },
+];
+
+function GuidedWizard({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { toast } = useToast();
+  const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [form, setFormState] = useState<Record<string, any>>({
+    primaryGoal: "", urgency: "normal", platforms: ["Google Ads", "Microsoft Advertising"],
+    matchType: "phrase", budgetStyle: "balanced", platformMode: "recommended",
+  });
+  const setField = (key: string, value: any) => setFormState((f) => ({ ...f, [key]: value }));
+
+  const pct = Math.round(((step + 1) / WIZARD_STEPS.length) * 100);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await new Promise((r) => setTimeout(r, 1300));
+    setSaving(false);
+    toast({ title: "Campaign saved as draft", description: "Your SPARK Paid Search Campaign plan has been saved." });
+    onClose();
+  };
+
+  const renderStep = () => {
+    switch (step) {
+      case 0: return <GoalStep form={form} setField={setField} />;
+      case 1: return <OfferAudienceStep form={form} setField={setField} />;
+      case 2: return <PlatformsBudgetStep form={form} setField={setField} />;
+      case 3: return <KeywordsStep form={form} setField={setField} />;
+      case 4: return <AdsTrackingStep form={form} setField={setField} />;
+      case 5: return <ReviewStep form={form} />;
+      default: return null;
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+        {/* Header */}
+        <div className="shrink-0 px-6 py-4 border-b border-border/60 bg-card/60">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+                <MonitorPlay size={14} className="text-primary-foreground" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Guided Campaign Wizard</p>
+                <p className="text-xs text-muted-foreground">Step {step + 1} of {WIZARD_STEPS.length}: <span className="text-foreground">{WIZARD_STEPS[step].label}</span></p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{pct}% complete</span>
+            </div>
+          </div>
+          <Progress value={pct} className="h-1.5 mb-3" />
+          <div className="flex items-center gap-1">
+            {WIZARD_STEPS.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => setStep(i)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors ${i === step ? "bg-primary text-primary-foreground" : i < step ? "bg-muted/60 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {s.icon}
+                <span className="hidden sm:inline">{s.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Body — two column */}
+        <div className="flex-1 overflow-hidden flex">
+          {/* Left: form */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {renderStep()}
+          </div>
+          {/* Right: brain */}
+          <div className="w-72 shrink-0 border-l border-border/50 bg-card/40 p-5 overflow-y-auto hidden lg:flex flex-col">
+            <SparkBrainPanel step={step} form={form} />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="shrink-0 border-t border-border/60 px-6 py-4 bg-card/60 flex items-center justify-between gap-3">
+          <Button variant="ghost" size="sm" onClick={() => step > 0 ? setStep(step - 1) : onClose()} className="gap-1.5">
+            <ChevronLeft size={14} /> {step === 0 ? "Cancel" : "Back"}
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => toast({ title: "Draft saved" })}><FileText size={13} /> Save Draft</Button>
+            {step < WIZARD_STEPS.length - 1 ? (
+              <Button size="sm" onClick={() => setStep(step + 1)} className="gap-1.5">
+                Next Step <ChevronRight size={14} />
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
+                {saving ? "Saving…" : "Create Campaign Plan"}
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 // ─── Campaign Table ───────────────────────────────────────────────────────────
 
-function CampaignRow({ campaign, onEdit }: { campaign: SearchCampaign; onEdit: (c: SearchCampaign) => void }) {
-  const budgetUsedPct = campaign.budget ? Math.round((campaign.spend / campaign.budget) * 100) : 0;
-  return (
-    <tr className="border-b border-border/30 hover:bg-card/60 group" data-testid={`campaign-row-${campaign.id}`}>
-      <td className="px-3 py-3 min-w-[180px]">
-        <p className="font-medium text-sm text-foreground">{campaign.name}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{SOURCE_LABELS[campaign.source]}</p>
-      </td>
-      <td className="px-3 py-3 whitespace-nowrap"><PlatformBadge platform={campaign.platform} /></td>
-      <td className="px-3 py-3 whitespace-nowrap">
-        <Badge variant="outline" className="text-xs border-border/50 text-muted-foreground">{TYPE_LABELS[campaign.type]}</Badge>
-      </td>
-      <td className="px-3 py-3">
-        <div className="flex flex-wrap gap-1">
-          {campaign.tags.map((t) => (
-            <span key={t} className={`text-xs px-1.5 py-0.5 rounded border ${TAG_COLORS[t] ?? "bg-muted/20 text-muted-foreground border-border"}`}>{t}</span>
-          ))}
-        </div>
-      </td>
-      <td className="px-3 py-3 whitespace-nowrap"><StatusBadge status={campaign.status} /></td>
-      <td className="px-3 py-3 whitespace-nowrap text-right">
-        <p className="text-xs font-medium">${campaign.budget.toLocaleString()}</p>
-        {campaign.status !== "draft" && campaign.status !== "keyword_plan" && campaign.status !== "ai_plan" && campaign.status !== "data_check" && (
-          <div className="mt-1 h-1 w-16 bg-muted/40 rounded-full ml-auto">
-            <div className={`h-full rounded-full ${budgetUsedPct > 90 ? "bg-red-400" : budgetUsedPct > 70 ? "bg-amber-400" : "bg-primary"}`} style={{ width: `${Math.min(budgetUsedPct, 100)}%` }} />
-          </div>
-        )}
-      </td>
-      <td className="px-3 py-3 text-right text-sm">{campaign.spend > 0 ? `$${campaign.spend.toLocaleString()}` : "—"}</td>
-      <td className="px-3 py-3 text-right text-sm">{campaign.avgCpc > 0 ? `$${campaign.avgCpc}` : "—"}</td>
-      <td className="px-3 py-3 text-right text-sm">{campaign.ctr > 0 ? `${campaign.ctr}%` : "—"}</td>
-      <td className="px-3 py-3 text-right text-sm font-medium text-primary">{campaign.conversions > 0 ? campaign.conversions : "—"}</td>
-      <td className="px-3 py-3 text-right text-sm">{campaign.cpl > 0 ? `$${campaign.cpl.toFixed(0)}` : "—"}</td>
-      <td className="px-3 py-3 text-right text-sm text-accent">{campaign.qualifiedLeads > 0 ? campaign.qualifiedLeads : "—"}</td>
-      <td className="px-3 py-3"><TrackingBadge status={campaign.trackingStatus} /></td>
-      <td className="px-3 py-3">
-        <span className={`text-xs flex items-center gap-1 ${campaign.syncStatus === "synced" ? "text-green-400" : campaign.syncStatus === "pending" ? "text-amber-400" : "text-red-400"}`}>
-          {campaign.syncStatus === "synced" ? <CheckCircle size={11} /> : campaign.syncStatus === "pending" ? <Clock size={11} /> : <XCircle size={11} />}
-          {campaign.syncStatus}
-        </span>
-      </td>
-      <td className="px-3 py-3 min-w-[160px]">
-        <p className="text-xs text-primary flex items-center gap-1"><Zap size={10} />{campaign.nextAiAction}</p>
-      </td>
-      <td className="px-3 py-3"><ApprovalBadge status={campaign.approvalStatus} /></td>
-      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{campaign.owner}</td>
-      <td className="px-3 py-3">
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEdit(campaign)} data-testid={`btn-edit-${campaign.id}`}><Edit size={11} /></Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal size={11} /></Button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function CampaignsTab({ campaigns, onEdit, onNew }: { campaigns: SearchCampaign[]; onEdit: (c: SearchCampaign) => void; onNew: () => void }) {
+function CampaignTable({ campaigns, onEdit }: { campaigns: SparkCampaign[]; onEdit: (c: SparkCampaign) => void }) {
   const [filter, setFilter] = useState("");
-  const filtered = campaigns.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase()) || c.platform.toLowerCase().includes(filter.toLowerCase()));
+  const filtered = campaigns.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase()));
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Filter campaigns…" value={filter} onChange={(e) => setFilter(e.target.value)} className="pl-8 h-8 text-sm" />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search campaigns…" value={filter} onChange={(e) => setFilter(e.target.value)} className="pl-8 h-8 text-sm" />
         </div>
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs"><Filter size={12} /> Filter</Button>
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs"><Download size={12} /> Export</Button>
-        <Button size="sm" className="h-8 gap-1.5 text-xs ml-auto" onClick={onNew}><Plus size={12} /> New Search Campaign</Button>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs"><Filter size={11} /> Filter</Button>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs"><Download size={11} /> Export</Button>
       </div>
-
       <Card className="border-border/60 bg-card">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-card/80">
-                  {["Campaign", "Platform", "Type", "Tags", "Status", "Budget", "Spend", "CPC", "CTR", "Conv.", "CPL", "Qual. Leads", "Tracking", "Sync", "Next AI Action", "Approval", "Owner", ""].map((h) => (
-                    <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
+                  {["Campaign", "Platforms", "Goal", "Status", "Budget", "Spend", "CPC", "Conv.", "CPL", "Tracking", "SPARK Recommendation", "Approval", "Actions"].map((h) => (
+                    <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c) => <CampaignRow key={c.id} campaign={c} onEdit={onEdit} />)}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ─── Search Ad Accounts Tab ───────────────────────────────────────────────────
-
-function SearchAdAccountsTab() {
-  const accounts = [
-    { platform: "Google Ads" as Platform, accountId: "123-456-7890", currency: "SGD", accessLevel: "Execute", lastSync: "2 min ago", imported: 5, trackingStatus: "ok" as const },
-    { platform: "Microsoft Advertising" as Platform, accountId: "9876543210", currency: "USD", accessLevel: "Execute", lastSync: "18 min ago", imported: 2, trackingStatus: "ok" as const },
-    { platform: "Baidu" as Platform, accountId: null, currency: "CNY", accessLevel: "—", lastSync: "Never", imported: 0, trackingStatus: "error" as const },
-    { platform: "Naver" as Platform, accountId: null, currency: "KRW", accessLevel: "—", lastSync: "Never", imported: 0, trackingStatus: "error" as const },
-    { platform: "Yahoo Japan" as Platform, accountId: null, currency: "JPY", accessLevel: "—", lastSync: "—", imported: 0, trackingStatus: "error" as const },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Connect search ad platforms to import campaigns, sync performance data, and enable automated launches.</p>
-        <Link href="/settings/api-connections">
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs"><Settings size={12} /> Manage API Keys</Button>
-        </Link>
-      </div>
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {accounts.map((acc) => {
-          const cfg = PLATFORM_CONFIG[acc.platform];
-          const isConnected = cfg.status === "connected";
-          const isComingSoon = cfg.status === "coming_soon";
-
-          return (
-            <Card key={acc.platform} className={`border-border/60 bg-card ${isConnected ? "border-green-500/20" : ""}`} data-testid={`account-card-${acc.platform.replace(/\s+/g, "-").toLowerCase()}`}>
-              <CardContent className="p-5 space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl bg-muted/30 border border-border/60 flex items-center justify-center text-sm font-bold ${cfg.color}`}>
-                      {acc.platform.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">{acc.platform}</p>
-                      {isConnected
-                        ? <p className="text-xs text-green-400 flex items-center gap-1 mt-0.5"><CheckCircle size={10} /> Connected</p>
-                        : isComingSoon
-                          ? <p className="text-xs text-purple-400 flex items-center gap-1 mt-0.5"><Clock size={10} /> Coming Soon</p>
-                          : <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><XCircle size={10} /> Not Connected</p>
-                      }
-                    </div>
-                  </div>
-                  {isConnected && <TrackingBadge status={acc.trackingStatus} />}
-                </div>
-
-                {isConnected && (
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div><p className="text-muted-foreground">Account ID</p><p className="font-mono font-medium mt-0.5">{acc.accountId}</p></div>
-                    <div><p className="text-muted-foreground">Currency</p><p className="font-medium mt-0.5">{acc.currency}</p></div>
-                    <div><p className="text-muted-foreground">Access Level</p><p className="font-medium mt-0.5">{acc.accessLevel}</p></div>
-                    <div><p className="text-muted-foreground">Last Sync</p><p className="font-medium mt-0.5">{acc.lastSync}</p></div>
-                    <div><p className="text-muted-foreground">Campaigns</p><p className="font-medium mt-0.5">{acc.imported} imported</p></div>
-                  </div>
-                )}
-
-                {!isConnected && (
-                  <p className="text-xs text-muted-foreground">
-                    {isComingSoon
-                      ? "Yahoo Japan Search Ads API integration is planned for Q3. You can pre-configure credentials in API Connections."
-                      : "Connect your account to import campaigns, sync performance data, and enable automated bid/budget actions."
-                    }
-                  </p>
-                )}
-
-                <div className="flex gap-2 pt-1">
-                  {isConnected && (
-                    <>
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1"><RefreshCw size={11} /> Sync Now</Button>
-                      <Button size="sm" variant="outline" className="h-7 px-3 text-xs gap-1" onClick={() => {}}>Import Campaigns</Button>
-                    </>
-                  )}
-                  {!isConnected && !isComingSoon && (
-                    <Link href="/settings/api-connections">
-                      <Button size="sm" className="h-7 px-3 text-xs gap-1"><Plus size={11} /> Connect Account</Button>
-                    </Link>
-                  )}
-                  {isComingSoon && (
-                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs" disabled>Notify Me</Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Keywords Tab ─────────────────────────────────────────────────────────────
-
-function KeywordsTab() {
-  const keywords = [
-    { term: "marketing automation software", type: "non_brand", matchType: "Exact", campaign: "Non-Brand — Growth APAC", cpc: 4.12, impressions: 8420, clicks: 312, conv: 28, quality: 8 },
-    { term: "spark ai marketing", type: "brand", matchType: "Phrase", campaign: "Brand Search — Core", cpc: 1.82, impressions: 12400, clicks: 892, conv: 156, quality: 10 },
-    { term: "hubspot alternative", type: "competitor", matchType: "Exact", campaign: "Competitor Conquest — SEMrush", cpc: 6.21, impressions: 2100, clicks: 98, conv: 8, quality: 6 },
-    { term: "crm software for small business", type: "non_brand", matchType: "Broad", campaign: "Non-Brand — Growth APAC", cpc: 2.85, impressions: 34200, clicks: 412, conv: 19, quality: 5 },
-    { term: "ai campaign management", type: "product", matchType: "Phrase", campaign: "Lead Gen — Enterprise Search", cpc: 3.44, impressions: 0, clicks: 0, conv: 0, quality: 7 },
-  ];
-
-  const negatives = [
-    "free", "open source", "tutorial", "how to", "reddit", "youtube", "course", "certification", "jobs", "career",
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search keywords…" className="pl-8 h-8 text-sm" />
-        </div>
-        <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs"><Wand2 size={12} /> AI Keyword Suggestions</Button>
-        <Button size="sm" className="h-8 gap-1.5 text-xs ml-auto"><Plus size={12} /> Add Keywords</Button>
-      </div>
-
-      <Card className="border-border/60 bg-card">
-        <CardHeader className="py-3 px-4 border-b border-border/40">
-          <CardTitle className="text-sm">Active Keywords</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/40">
-                  {["Keyword", "Type", "Match Type", "Campaign", "CPC", "Impressions", "Clicks", "Conv.", "Quality Score"].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {keywords.map((kw, i) => (
-                  <tr key={i} className="border-b border-border/20 hover:bg-card/60">
-                    <td className="px-4 py-2.5 font-mono text-xs">{kw.term}</td>
-                    <td className="px-4 py-2.5">
-                      <Badge variant="outline" className={`text-xs border-0 ${kw.type === "brand" ? "bg-blue-500/15 text-blue-300" : kw.type === "competitor" ? "bg-red-500/15 text-red-300" : "bg-muted/30 text-muted-foreground"}`}>
-                        {kw.type.replace("_", "-")}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2.5"><Badge variant="outline" className="text-xs">{kw.matchType}</Badge></td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{kw.campaign}</td>
-                    <td className="px-4 py-2.5 text-right text-xs">${kw.cpc}</td>
-                    <td className="px-4 py-2.5 text-right text-xs">{kw.impressions > 0 ? kw.impressions.toLocaleString() : "—"}</td>
-                    <td className="px-4 py-2.5 text-right text-xs">{kw.clicks > 0 ? kw.clicks.toLocaleString() : "—"}</td>
-                    <td className="px-4 py-2.5 text-right text-xs font-medium text-primary">{kw.conv > 0 ? kw.conv : "—"}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <div className="w-16 h-1.5 bg-muted/40 rounded-full">
-                          <div className={`h-full rounded-full ${kw.quality >= 8 ? "bg-green-400" : kw.quality >= 6 ? "bg-amber-400" : "bg-red-400"}`} style={{ width: `${kw.quality * 10}%` }} />
+                {filtered.map((c) => {
+                  const budgetPct = c.budget ? Math.round((c.spend / c.budget) * 100) : 0;
+                  return (
+                    <tr key={c.id} className="border-b border-border/30 hover:bg-card/60 group" data-testid={`campaign-row-${c.id}`}>
+                      <td className="px-3 py-3">
+                        <p className="font-medium text-sm">{c.name}</p>
+                        <p className="text-xs text-muted-foreground">{c.owner}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {c.platforms.map((p) => <PlatformChip key={p} platform={p} />)}
                         </div>
-                        <span className="text-xs">{kw.quality}/10</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <span className="text-xs text-muted-foreground">{GOAL_LABELS[c.goal]}</span>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <Badge variant="outline" className={`text-xs border-0 ${STATUS_STYLES[c.status]}`}>{STATUS_LABELS[c.status]}</Badge>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <p className="text-xs font-medium">${c.budget.toLocaleString()}</p>
+                        {c.spend > 0 && (
+                          <div className="mt-1 h-1 w-14 bg-muted/40 rounded-full">
+                            <div className={`h-full rounded-full ${budgetPct > 90 ? "bg-red-400" : "bg-primary"}`} style={{ width: `${Math.min(budgetPct, 100)}%` }} />
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-right">{c.spend > 0 ? `$${c.spend.toLocaleString()}` : "—"}</td>
+                      <td className="px-3 py-3 text-xs text-right">{c.avgCpc > 0 ? `$${c.avgCpc}` : "—"}</td>
+                      <td className="px-3 py-3 text-xs text-right font-medium text-primary">{c.conversions > 0 ? c.conversions : "—"}</td>
+                      <td className="px-3 py-3 text-xs text-right">{c.cpl > 0 ? `$${c.cpl.toFixed(0)}` : "—"}</td>
+                      <td className="px-3 py-3"><TrackingBadge status={c.trackingStatus} /></td>
+                      <td className="px-3 py-3 min-w-[200px]">
+                        <p className="text-xs text-primary flex items-center gap-1"><Zap size={10} />{c.sparkRec}</p>
+                      </td>
+                      <td className="px-3 py-3"><ApprovalBadge status={c.approvalStatus} /></td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" title="View"><Eye size={11} /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit" onClick={() => onEdit(c)}><Edit size={11} /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" title="Optimise"><Zap size={11} /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" title="More"><MoreHorizontal size={11} /></Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
 
+// ─── Keywords / Bidding / Accounts / Recs / Approvals / Reports (compact) ────
+
+function QuickKeywordsTab() {
+  const keywords = [
+    { term: "marketing automation software", match: "Exact", cpc: 4.12, clicks: 312, conv: 28, quality: 8 },
+    { term: "spark ai marketing", match: "Phrase", cpc: 1.82, clicks: 892, conv: 156, quality: 10 },
+    { term: "hubspot alternative", match: "Exact", cpc: 6.21, clicks: 98, conv: 8, quality: 6 },
+    { term: "ai campaign management", match: "Phrase", cpc: 3.44, clicks: 0, conv: 0, quality: 7 },
+  ];
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5"><Wand2 size={12} /> AI Keyword Suggestions</Button>
+        <Button size="sm" className="h-8 text-xs gap-1.5 ml-auto"><Plus size={12} /> Add Keywords</Button>
+      </div>
       <Card className="border-border/60 bg-card">
-        <CardHeader className="py-3 px-4 border-b border-border/40">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm text-red-300">Negative Keywords</CardTitle>
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><Wand2 size={11} /> AI Suggestions</Button>
-          </div>
-        </CardHeader>
+        <CardContent className="p-0 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-border">{["Keyword", "Match", "CPC", "Clicks", "Conv.", "Quality"].map((h) => <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">{h}</th>)}</tr></thead>
+            <tbody>{keywords.map((k, i) => (
+              <tr key={i} className="border-b border-border/30 hover:bg-card/60">
+                <td className="px-4 py-2.5 font-mono text-xs">{k.term}</td>
+                <td className="px-4 py-2.5"><Badge variant="outline" className="text-xs">{k.match}</Badge></td>
+                <td className="px-4 py-2.5 text-right text-xs">${k.cpc}</td>
+                <td className="px-4 py-2.5 text-right text-xs">{k.clicks || "—"}</td>
+                <td className="px-4 py-2.5 text-right text-xs font-medium text-primary">{k.conv || "—"}</td>
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center gap-1.5"><div className="w-14 h-1.5 bg-muted/40 rounded-full"><div className={`h-full rounded-full ${k.quality >= 8 ? "bg-green-400" : k.quality >= 6 ? "bg-amber-400" : "bg-red-400"}`} style={{ width: `${k.quality * 10}%` }} /></div><span className="text-xs">{k.quality}/10</span></div>
+                </td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </CardContent>
+      </Card>
+      <Card className="border-border/60 bg-card">
         <CardContent className="p-4">
-          <div className="flex flex-wrap gap-2">
-            {negatives.map((n) => (
-              <Badge key={n} variant="outline" className="text-xs border-red-500/30 text-red-300 bg-red-500/10 gap-1">
-                <XCircle size={10} /> {n}
-              </Badge>
+          <p className="text-xs font-semibold text-red-400 mb-2">Negative Keywords</p>
+          <div className="flex flex-wrap gap-1.5">
+            {["free", "open source", "tutorial", "reddit", "jobs", "career", "how to", "youtube"].map((n) => (
+              <Badge key={n} variant="outline" className="text-xs border-red-500/30 text-red-300 bg-red-500/10 gap-1"><XCircle size={9} />{n}</Badge>
             ))}
-            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1 text-muted-foreground"><Plus size={10} /> Add negative</Button>
+            <Button size="sm" variant="ghost" className="h-5 px-2 text-xs text-muted-foreground"><Plus size={9} /> Add</Button>
           </div>
         </CardContent>
       </Card>
@@ -473,159 +977,27 @@ function KeywordsTab() {
   );
 }
 
-// ─── Bidding & Budget Tab ─────────────────────────────────────────────────────
-
-function BiddingBudgetTab({ campaigns }: { campaigns: SearchCampaign[] }) {
-  return (
-    <div className="space-y-4">
-      <div className="grid md:grid-cols-2 gap-4">
-        {campaigns.filter((c) => c.budget > 0).map((c) => {
-          const pct = Math.round((c.spend / c.budget) * 100);
-          return (
-            <Card key={c.id} className="border-border/60 bg-card">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium text-sm">{c.name}</p>
-                    <PlatformBadge platform={c.platform} />
-                  </div>
-                  <StatusBadge status={c.status} />
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-xs">
-                  <div><p className="text-muted-foreground">Monthly Budget</p><p className="font-bold text-base">${c.budget.toLocaleString()}</p></div>
-                  <div><p className="text-muted-foreground">Spent</p><p className={`font-bold text-base ${pct > 90 ? "text-red-400" : "text-foreground"}`}>${c.spend.toLocaleString()}</p></div>
-                  <div><p className="text-muted-foreground">Remaining</p><p className="font-bold text-base text-green-400">${(c.budget - c.spend).toLocaleString()}</p></div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">Budget Pacing</span>
-                    <span className={pct > 90 ? "text-red-400" : pct > 70 ? "text-amber-400" : "text-muted-foreground"}>{pct}% used</span>
-                  </div>
-                  <div className="h-2 bg-muted/40 rounded-full">
-                    <div className={`h-full rounded-full ${pct > 90 ? "bg-red-400" : pct > 70 ? "bg-amber-400" : "bg-primary"}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" className="h-7 text-xs gap-1"><Edit size={11} /> Adjust Budget</Button>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-primary"><Wand2 size={11} /> AI Suggestion</Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="p-4 flex items-start gap-3">
-          <Lightbulb size={16} className="text-primary mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium">AI Budget Recommendation</p>
-            <p className="text-xs text-muted-foreground mt-1">Shift $3,000 from "Competitor Conquest" (ROAS 1.8x) to "Brand Search — Core" (ROAS 6.1x) to improve blended return by an estimated 24% without increasing total spend.</p>
-            <div className="flex gap-2 mt-3">
-              <Button size="sm" className="h-7 text-xs">Apply Recommendation</Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs">Dismiss</Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ─── Ads & Extensions Tab ─────────────────────────────────────────────────────
-
-function AdsExtensionsTab({ onGenerateCopy }: { onGenerateCopy: () => void }) {
-  const ads = [
-    { campaign: "Brand Search — Core", headlines: ["SPARK AI — Marketing Suite", "AI-Powered Campaign Manager", "Free 14-Day Trial"], descriptions: ["Plan, launch and optimise campaigns with AI. No agency needed.", "Connect Google, Meta, LinkedIn and more from one command centre."], ctr: 5.4, status: "approved" },
-    { campaign: "Non-Brand — Growth APAC", headlines: ["Best Marketing Automation 2025", "Replace 6 Tools With One Platform", "Start Free — No Credit Card"], descriptions: ["SPARK AI plans campaigns, writes copy, and optimises spend automatically.", "Used by 2,000+ marketing teams across APAC. Try free today."], ctr: 2.8, status: "approved" },
-    { campaign: "Competitor Conquest — SEMrush", headlines: ["Better Than SEMrush?", "Compare SPARK vs Competitors", "Switch Today — Easy Migration"], descriptions: ["SPARK AI does more than SEO tools. Full campaign management + AI insights.", "Free migration support. See why teams are switching to SPARK AI."], ctr: 1.9, status: "pending" },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button size="sm" className="gap-1.5 text-xs h-8" onClick={onGenerateCopy}><Wand2 size={12} /> Generate Search Ad Copy</Button>
-        <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8"><Plus size={12} /> Generate Extensions</Button>
-        <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8"><Shield size={12} /> Send for Creative Approval</Button>
-      </div>
-      <div className="space-y-4">
-        {ads.map((ad, i) => (
-          <Card key={i} className="border-border/60 bg-card">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground font-medium">{ad.campaign}</p>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">CTR: <span className="text-foreground font-medium">{ad.ctr}%</span></span>
-                  <ApprovalBadge status={ad.status as any} />
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Headlines</p>
-                <div className="flex flex-wrap gap-2">
-                  {ad.headlines.map((h, j) => (
-                    <span key={j} className="text-xs px-2 py-1 rounded bg-primary/10 border border-primary/20 text-primary">{h}</span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Descriptions</p>
-                <div className="space-y-1.5">
-                  {ad.descriptions.map((d, j) => (
-                    <p key={j} className="text-xs bg-card/80 border border-border/40 rounded px-2 py-1.5">{d}</p>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Extensions <span className="text-primary">(placeholders)</span></p>
-                <div className="flex gap-2">
-                  {["Callouts", "Sitelinks", "Structured Snippets"].map((ext) => (
-                    <Badge key={ext} variant="outline" className="text-xs border-border/40 text-muted-foreground cursor-pointer hover:border-primary/40 hover:text-primary transition-colors">+ {ext}</Badge>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── AI Recommendations Tab ───────────────────────────────────────────────────
-
-function AIRecommendationsTab() {
+function QuickRecsTab() {
   const recs = [
-    { type: "Negative Keyword", priority: "high", title: "Add 14 negative keywords to reduce wasted spend", desc: "Queries like \"free\", \"open source\", and \"tutorial\" are consuming 18% of budget with 0 conversions. Estimated monthly saving: $1,840.", campaign: "Non-Brand — Growth APAC", icon: <XCircle size={14} className="text-red-400" /> },
-    { type: "Budget", priority: "high", title: "Shift budget from Competitor Conquest to Brand Search", desc: "Brand Search is returning 6.1x ROAS vs 1.8x for Competitor Conquest. Reallocating $3,000/month could improve blended ROAS by 24%.", campaign: "Global", icon: <DollarSign size={14} className="text-amber-400" /> },
-    { type: "Bid Strategy", priority: "medium", title: "Switch Competitor Conquest to Target CPA bidding", desc: "Manual CPC is underperforming. Switching to Target CPA ($120) could increase qualified lead volume by an estimated 15% at flat spend.", campaign: "Competitor Conquest — SEMrush", icon: <TrendingUp size={14} className="text-primary" /> },
-    { type: "Tracking", priority: "high", title: "Fix missing GA4 conversion event before launch", desc: "Lead Gen — Enterprise Search is missing a primary GA4 conversion event. Launching without tracking means no Smart Bidding data. Do not launch until resolved.", campaign: "Lead Gen — Enterprise Search", icon: <AlertCircle size={14} className="text-red-400" /> },
-    { type: "Ad Copy", priority: "medium", title: "Generate new ad copy for Competitor Conquest (CTR 1.9%)", desc: "CTR is 65% below account average. A/B testing two new headline variants could recover 40+ clicks/day. Click Generate to create AI suggestions.", campaign: "Competitor Conquest — SEMrush", icon: <Wand2 size={14} className="text-primary" /> },
-    { type: "Landing Page", priority: "medium", title: "Improve landing page before increasing Non-Brand budget", desc: "Conversion rate on the non-brand landing page is 2.1% vs 4.8% for brand. Fixing form load time and adding social proof could increase leads by 30%.", campaign: "Non-Brand — Growth APAC", icon: <Globe size={14} className="text-cyan-400" /> },
-    { type: "Keyword", priority: "low", title: "Create competitor search campaign for HubSpot", desc: "\"hubspot alternative\" and \"hubspot vs\" have 22K monthly searches in APAC. No current campaign targeting them. Estimated 60-120 leads/month.", campaign: "Global", icon: <Target size={14} className="text-green-400" /> },
-    { type: "Risk Alert", priority: "high", title: "Baidu campaign keyword localisation incomplete", desc: "Baidu Search Ads require Simplified Chinese keywords and local ad copy. Current English keywords will be rejected at review. Resolve before requesting launch.", campaign: "Baidu Brand — China Expansion", icon: <Flag size={14} className="text-red-400" /> },
+    { type: "Negative Keyword", priority: "high", title: "Add 14 negative keywords to cut ~$1,840 wasted spend", campaign: "Non-Brand — Singapore SMEs" },
+    { type: "Budget", priority: "high", title: "Shift $3k from Competitor Conquest (1.8x ROAS) → Brand (6.1x ROAS)", campaign: "Global" },
+    { type: "Tracking", priority: "high", title: "Fix missing GA4 conversion event on Enterprise Lead Gen before launch", campaign: "Enterprise Lead Gen" },
+    { type: "Ad Copy", priority: "medium", title: "Generate new headlines for Competitor Conquest (CTR only 1.9%)", campaign: "Competitor Conquest — SEMrush" },
+    { type: "Keyword", priority: "low", title: "Create HubSpot competitor campaign — 22K APAC searches/mo", campaign: "Suggested new" },
   ];
-
-  const priorityConfig = { high: "border-red-500/30 bg-red-500/5", medium: "border-amber-500/30 bg-amber-500/5", low: "border-border/60 bg-card" };
-  const typeConfig: Record<string, string> = {
-    "Negative Keyword": "bg-red-500/15 text-red-300", "Budget": "bg-amber-500/15 text-amber-300",
-    "Bid Strategy": "bg-primary/15 text-primary", "Tracking": "bg-red-500/15 text-red-300",
-    "Ad Copy": "bg-purple-500/15 text-purple-300", "Landing Page": "bg-cyan-500/15 text-cyan-300",
-    "Keyword": "bg-green-500/15 text-green-300", "Risk Alert": "bg-red-500/15 text-red-300",
-  };
-
+  const priorityStyle: Record<string, string> = { high: "border-red-500/30 bg-red-500/5", medium: "border-amber-500/30 bg-amber-500/5", low: "border-border/60 bg-card" };
   return (
     <div className="space-y-3">
-      {recs.map((rec, i) => (
-        <Card key={i} className={`border ${priorityConfig[rec.priority]}`} data-testid={`rec-${i}`}>
-          <CardContent className="p-4 flex items-start gap-4">
-            <div className="mt-0.5 shrink-0">{rec.icon}</div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <Badge variant="outline" className={`text-xs border-0 ${typeConfig[rec.type] ?? "bg-muted text-muted-foreground"}`}>{rec.type}</Badge>
-                <Badge variant="outline" className={`text-xs ${rec.priority === "high" ? "border-red-500/30 text-red-300" : rec.priority === "medium" ? "border-amber-500/30 text-amber-300" : "border-border text-muted-foreground"}`}>{rec.priority} priority</Badge>
-                <span className="text-xs text-muted-foreground">· {rec.campaign}</span>
+      {recs.map((r, i) => (
+        <Card key={i} className={`border ${priorityStyle[r.priority]}`}>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="outline" className="text-xs border-0 bg-primary/15 text-primary">{r.type}</Badge>
+                <Badge variant="outline" className={`text-xs ${r.priority === "high" ? "border-red-500/30 text-red-300" : r.priority === "medium" ? "border-amber-500/30 text-amber-300" : "border-border text-muted-foreground"}`}>{r.priority}</Badge>
+                <span className="text-xs text-muted-foreground">· {r.campaign}</span>
               </div>
-              <p className="text-sm font-medium">{rec.title}</p>
-              <p className="text-xs text-muted-foreground mt-1">{rec.desc}</p>
+              <p className="text-sm font-medium">{r.title}</p>
             </div>
             <div className="flex gap-2 shrink-0">
               <Button size="sm" variant="ghost" className="h-7 text-xs">Dismiss</Button>
@@ -638,661 +1010,166 @@ function AIRecommendationsTab() {
   );
 }
 
-// ─── Approvals Tab ────────────────────────────────────────────────────────────
-
-function ApprovalsTab() {
-  const items = [
-    { id: 1, title: "Budget approval — Lead Gen Enterprise Search", type: "Budget", campaign: "Lead Gen — Enterprise Search", amount: "$18,000/mo", requestedBy: "Sarah Park", requestedAt: "2h ago", status: "pending", urgency: "high" },
-    { id: 2, title: "Keyword approval — Baidu Brand China", type: "Keyword", campaign: "Baidu Brand — China Expansion", amount: "142 keywords", requestedBy: "Priya Sharma", requestedAt: "4h ago", status: "pending", urgency: "medium" },
-    { id: 3, title: "Ad copy approval — Competitor Conquest v2", type: "Ad Copy", campaign: "Competitor Conquest — SEMrush", amount: "6 ad variants", requestedBy: "David Lee", requestedAt: "Yesterday", status: "pending", urgency: "medium" },
-    { id: 4, title: "Launch approval — Lead Gen Enterprise Search", type: "Launch", campaign: "Lead Gen — Enterprise Search", amount: "Full campaign", requestedBy: "Sarah Park", requestedAt: "2h ago", status: "pending", urgency: "high" },
-    { id: 5, title: "Tracking approval — Non-Brand APAC GA4 update", type: "Tracking", campaign: "Non-Brand — Growth APAC", amount: "GA4 config change", requestedBy: "Alex Chen", requestedAt: "3d ago", status: "approved", urgency: "low" },
-  ];
-
-  return (
-    <div className="space-y-3">
-      {items.map((item) => (
-        <Card key={item.id} className={`border-border/60 bg-card ${item.status === "pending" && item.urgency === "high" ? "border-amber-500/30" : ""}`} data-testid={`approval-item-${item.id}`}>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <Badge variant="outline" className="text-xs border-border/50 text-muted-foreground">{item.type}</Badge>
-                {item.urgency === "high" && <Badge variant="outline" className="text-xs border-amber-500/30 text-amber-300">Urgent</Badge>}
-                <ApprovalBadge status={item.status as any} />
-              </div>
-              <p className="text-sm font-medium">{item.title}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{item.campaign} · {item.amount} · by {item.requestedBy} · {item.requestedAt}</p>
-            </div>
-            {item.status === "pending" && (
-              <div className="flex gap-2 shrink-0">
-                <Button size="sm" variant="outline" className="h-7 text-xs border-red-500/30 text-red-300 hover:bg-red-500/10">Reject</Button>
-                <Button size="sm" className="h-7 text-xs gap-1"><CheckCircle size={11} /> Approve</Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-// ─── Reports Tab ──────────────────────────────────────────────────────────────
-
-function ReportsTab() {
-  const reports = [
-    { title: "Campaign Performance Summary", desc: "All active paid search campaigns — spend, leads, ROAS, CPL", updated: "Today 08:00", type: "performance" },
-    { title: "Platform Performance", desc: "Google Ads vs Microsoft Advertising comparison", updated: "Today 08:00", type: "platform" },
-    { title: "Keyword Performance", desc: "Top keywords by conversion, CPC, and quality score", updated: "Today 08:00", type: "keyword" },
-    { title: "Search Term Insights", desc: "Actual search terms triggering your ads — find negatives & opportunities", updated: "Today 08:00", type: "search_terms" },
-    { title: "Budget Pacing Report", desc: "Daily spend vs budget target — 30-day pacing view", updated: "Today 08:00", type: "budget" },
-    { title: "Lead Quality Report", desc: "CRM-qualified leads by campaign, keyword, and platform", updated: "Today 08:00", type: "lead_quality" },
-    { title: "Ad Copy Performance", desc: "CTR, conversion rate, and approval status for all ad variants", updated: "Today 08:00", type: "ad_copy" },
-    { title: "Landing Page Performance", desc: "Conversion rates and form completion by landing page and campaign", updated: "Today 08:00", type: "landing_page" },
-    { title: "AI Executive Summary", desc: "Auto-generated board-ready performance summary with recommended actions", updated: "Today 08:00", type: "ai_summary" },
-  ];
-
-  return (
-    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {reports.map((r, i) => (
-        <Card key={i} className="border-border/60 bg-card hover:border-primary/30 transition-colors cursor-pointer" data-testid={`report-card-${i}`}>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-start justify-between">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <FileText size={14} className="text-primary" />
-              </div>
-              <span className="text-xs text-muted-foreground">{r.updated}</span>
-            </div>
-            <div>
-              <p className="text-sm font-semibold">{r.title}</p>
-              <p className="text-xs text-muted-foreground mt-1">{r.desc}</p>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1 flex-1"><Eye size={11} /> View</Button>
-              <Button size="sm" variant="ghost" className="h-7 px-2"><Download size={11} /></Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-// ─── Landing Page & Tracking Tab ──────────────────────────────────────────────
-
-function LandingTrackingTab({ campaigns }: { campaigns: SearchCampaign[] }) {
-  return (
-    <div className="space-y-4">
-      {campaigns.filter((c) => c.status === "live" || c.status === "optimising").map((c) => (
-        <Card key={c.id} className="border-border/60 bg-card">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="font-medium text-sm">{c.name}</p>
-              <div className="flex items-center gap-2">
-                <PlatformBadge platform={c.platform} />
-                <TrackingBadge status={c.trackingStatus} />
-              </div>
-            </div>
-            <div className="grid md:grid-cols-3 gap-4 text-xs">
-              <div>
-                <p className="text-muted-foreground mb-1">Landing Page URL</p>
-                <code className="text-foreground font-mono text-xs bg-muted/20 px-2 py-1 rounded block truncate">https://sparkapp.io/lp/{c.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}</code>
-              </div>
-              <div>
-                <p className="text-muted-foreground mb-1">GA4 Conversion Event</p>
-                <code className="text-primary font-mono text-xs bg-primary/10 px-2 py-1 rounded block">generate_lead</code>
-              </div>
-              <div>
-                <p className="text-muted-foreground mb-1">UTM Template</p>
-                <code className="text-foreground font-mono text-xs bg-muted/20 px-2 py-1 rounded block truncate">utm_source={c.platform.toLowerCase().split(" ")[0]}&utm_medium=cpc</code>
-              </div>
-            </div>
-            {c.trackingStatus === "warning" && (
-              <div className="flex items-center gap-2 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
-                <AlertCircle size={12} className="shrink-0" />
-                GA4 event firing intermittently — check dataLayer push on form submit.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-// ─── 9-Step Wizard ────────────────────────────────────────────────────────────
-
-const WIZARD_STEPS = [
-  "Campaign Identity", "Objective", "Search Platform & Account",
-  "Keywords", "Bidding & Budget", "Landing Page & Tracking",
-  "Search Ads & Extensions", "AI Search Plan Review", "Approval & Launch",
-];
-
-function CampaignWizard({ open, onClose, editCampaign }: { open: boolean; onClose: () => void; editCampaign?: SearchCampaign }) {
-  const { toast } = useToast();
-  const [step, setStep] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    name: editCampaign?.name ?? "",
-    source: editCampaign?.source ?? "standalone",
-    type: editCampaign?.type ?? "non_brand",
-    tags: editCampaign?.tags ?? [],
-    owner: editCampaign?.owner ?? "Alex Chen",
-    objective: "leads",
-    targetCpl: "120",
-    targetCpa: "80",
-    platform: editCampaign?.platform ?? "Google Ads",
-    accessLevel: "execute",
-    brandKeywords: "spark ai, spark ai marketing, spark ai platform",
-    nonBrandKeywords: "marketing automation software, ai campaign management",
-    competitorKeywords: "hubspot alternative, marketo alternative",
-    negativeKeywords: "free, tutorial, open source, jobs",
-    matchType: "exact",
-    budget: editCampaign?.budget?.toString() ?? "15000",
-    dailyBudget: "500",
-    bidStrategy: "target_cpa",
-    maxCpc: "8",
-    landingPage: "https://sparkapp.io/lp/campaign",
-    ga4Event: "generate_lead",
-    utmSource: "",
-    headline1: "SPARK AI — Marketing Suite",
-    headline2: "AI-Powered Campaign Manager",
-    headline3: "Free 14-Day Trial",
-    desc1: "Plan, launch and optimise campaigns with AI. No agency needed.",
-    desc2: "Connect Google, Meta, LinkedIn and more from one command centre.",
-  });
-
-  const isEdit = !!editCampaign;
-  const pct = Math.round(((step + 1) / WIZARD_STEPS.length) * 100);
-
-  const setField = (key: string, value: any) => setForm((f) => ({ ...f, [key]: value }));
-
-  const handleFinish = async () => {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 1400));
-    setSaving(false);
-    toast({ title: isEdit ? "Campaign updated" : "Campaign created", description: isEdit ? "Changes saved and submitted for approval." : "New paid search campaign draft created." });
-    onClose();
-  };
-
-  const renderStep = () => {
-    switch (step) {
-      case 0: return (
-        <div className="space-y-4">
-          <div><Label className="text-xs">Campaign Name *</Label><Input value={form.name} onChange={(e) => setField("name", e.target.value)} placeholder="e.g. Brand Search — Core Q2" className="mt-1" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs">Campaign Source</Label>
-              <Select value={form.source} onValueChange={(v) => setField("source", v)}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(SOURCE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Campaign Type</Label>
-              <Select value={form.type} onValueChange={(v) => setField("type", v)}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div><Label className="text-xs">Owner</Label><Input value={form.owner} onChange={(e) => setField("owner", e.target.value)} className="mt-1" /></div>
-          <div>
-            <Label className="text-xs">Marketing Tags</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {["Q2 Growth", "Singapore SMEs", "High Intent", "Urgent Push", "Board Approved", "Budget Sensitive", "Test Campaign"].map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => setField("tags", form.tags.includes(tag) ? form.tags.filter((t: string) => t !== tag) : [...form.tags, tag])}
-                  className={`text-xs px-2 py-1 rounded border transition-colors ${form.tags.includes(tag) ? (TAG_COLORS[tag] ?? "bg-primary/20 border-primary/40 text-primary") : "border-border/50 text-muted-foreground hover:border-border"}`}
-                >{tag}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-
-      case 1: return (
-        <div className="space-y-4">
-          <div>
-            <Label className="text-xs">Campaign Objective</Label>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              {[["leads", "Generate Leads"], ["sales", "Drive Sales"], ["traffic", "Website Traffic"], ["appointments", "Book Appointments"], ["brand_protection", "Brand Protection"], ["competitor_conquest", "Competitor Conquest"]].map(([v, l]) => (
-                <button key={v} onClick={() => setField("objective", v)} className={`text-left p-3 rounded-lg border text-sm transition-colors ${form.objective === v ? "border-primary/60 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:border-border"}`}>{l}</button>
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><Label className="text-xs">Target CPL ($)</Label><Input value={form.targetCpl} onChange={(e) => setField("targetCpl", e.target.value)} className="mt-1" type="number" /></div>
-            <div><Label className="text-xs">Target CPA ($)</Label><Input value={form.targetCpa} onChange={(e) => setField("targetCpa", e.target.value)} className="mt-1" type="number" /></div>
-          </div>
-          <div><Label className="text-xs">Primary Conversion Event</Label>
-            <Select defaultValue="lead_form">
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="lead_form">Lead Form Submit</SelectItem>
-                <SelectItem value="purchase">Purchase</SelectItem>
-                <SelectItem value="phone_call">Phone Call</SelectItem>
-                <SelectItem value="appointment">Appointment Booked</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      );
-
-      case 2: return (
-        <div className="space-y-4">
-          <div>
-            <Label className="text-xs">Search Platform</Label>
-            <div className="grid grid-cols-1 gap-2 mt-2">
-              {(["Google Ads", "Microsoft Advertising", "Baidu", "Naver", "Yahoo Japan"] as Platform[]).map((p) => {
-                const cfg = PLATFORM_CONFIG[p];
-                return (
-                  <button
-                    key={p}
-                    onClick={() => cfg.status !== "coming_soon" && setField("platform", p)}
-                    disabled={cfg.status === "coming_soon"}
-                    className={`flex items-center justify-between p-3 rounded-lg border text-sm transition-colors ${form.platform === p ? "border-primary/60 bg-primary/10" : "border-border/60 hover:border-border"} ${cfg.status === "coming_soon" ? "opacity-50 cursor-not-allowed" : ""}`}
-                  >
-                    <span className={`font-medium ${cfg.color}`}>{p}</span>
-                    <Badge variant="outline" className={`text-xs ${cfg.status === "connected" ? "border-green-500/30 text-green-300" : cfg.status === "coming_soon" ? "border-purple-500/30 text-purple-300" : "border-border text-muted-foreground"}`}>
-                      {cfg.status === "connected" ? "Connected" : cfg.status === "coming_soon" ? "Coming Soon" : "Not Connected"}
-                    </Badge>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs">Access Level</Label>
-            <Select value={form.accessLevel} onValueChange={(v) => setField("accessLevel", v)}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="read_only">Read Only</SelectItem>
-                <SelectItem value="draft">Draft Only</SelectItem>
-                <SelectItem value="execute">Full Execute</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      );
-
-      case 3: return (
-        <div className="space-y-4">
-          <div><Label className="text-xs">Brand Keywords (one per line)</Label><Textarea value={form.brandKeywords} onChange={(e) => setField("brandKeywords", e.target.value)} className="mt-1 font-mono text-xs h-20" /></div>
-          <div><Label className="text-xs">Non-Brand Keywords</Label><Textarea value={form.nonBrandKeywords} onChange={(e) => setField("nonBrandKeywords", e.target.value)} className="mt-1 font-mono text-xs h-20" /></div>
-          <div><Label className="text-xs">Competitor Keywords</Label><Textarea value={form.competitorKeywords} onChange={(e) => setField("competitorKeywords", e.target.value)} className="mt-1 font-mono text-xs h-16" /></div>
-          <div><Label className="text-xs text-red-400">Negative Keywords</Label><Textarea value={form.negativeKeywords} onChange={(e) => setField("negativeKeywords", e.target.value)} className="mt-1 font-mono text-xs h-16 border-red-500/20" /></div>
-          <div>
-            <Label className="text-xs">Default Match Type</Label>
-            <div className="flex gap-2 mt-2">
-              {["exact", "phrase", "broad"].map((m) => (
-                <button key={m} onClick={() => setField("matchType", m)} className={`px-3 py-1.5 rounded text-xs capitalize border transition-colors ${form.matchType === m ? "border-primary/60 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>{m}</button>
-              ))}
-            </div>
-          </div>
-          <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8 w-full"><Wand2 size={12} /> Get AI Keyword Suggestions</Button>
-        </div>
-      );
-
-      case 4: return (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div><Label className="text-xs">Monthly Budget ($)</Label><Input value={form.budget} onChange={(e) => setField("budget", e.target.value)} type="number" className="mt-1" /></div>
-            <div><Label className="text-xs">Daily Budget ($)</Label><Input value={form.dailyBudget} onChange={(e) => setField("dailyBudget", e.target.value)} type="number" className="mt-1" /></div>
-          </div>
-          <div>
-            <Label className="text-xs">Bid Strategy</Label>
-            <Select value={form.bidStrategy} onValueChange={(v) => setField("bidStrategy", v)}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="target_cpa">Target CPA</SelectItem>
-                <SelectItem value="target_roas">Target ROAS</SelectItem>
-                <SelectItem value="maximize_conversions">Maximize Conversions</SelectItem>
-                <SelectItem value="maximize_clicks">Maximize Clicks</SelectItem>
-                <SelectItem value="manual_cpc">Manual CPC</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div><Label className="text-xs">Max CPC Cap ($)</Label><Input value={form.maxCpc} onChange={(e) => setField("maxCpc", e.target.value)} type="number" className="mt-1" /></div>
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="p-3 flex items-start gap-2">
-              <Lightbulb size={13} className="text-primary mt-0.5 shrink-0" />
-              <p className="text-xs text-muted-foreground"><span className="text-primary font-medium">AI Suggestion:</span> Based on your $120 CPL target and historical account data, a Target CPA of $80 with $500/day pacing should yield 90-110 leads/month at current keyword competition levels.</p>
-            </CardContent>
-          </Card>
-        </div>
-      );
-
-      case 5: return (
-        <div className="space-y-4">
-          <div><Label className="text-xs">Landing Page URL *</Label><Input value={form.landingPage} onChange={(e) => setField("landingPage", e.target.value)} className="mt-1 font-mono text-xs" /></div>
-          <div><Label className="text-xs">GA4 Conversion Event</Label><Input value={form.ga4Event} onChange={(e) => setField("ga4Event", e.target.value)} placeholder="e.g. generate_lead" className="mt-1 font-mono text-xs" /></div>
-          <div><Label className="text-xs">CRM Lead Source Mapping</Label>
-            <Select defaultValue="ppc_search">
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ppc_search">PPC — Paid Search</SelectItem>
-                <SelectItem value="ppc_brand">PPC — Brand Search</SelectItem>
-                <SelectItem value="ppc_competitor">PPC — Competitor</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div><Label className="text-xs">UTM Template</Label><Input placeholder="utm_source=google&utm_medium=cpc&utm_campaign={campaign_name}" className="mt-1 font-mono text-xs" /></div>
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
-            <AlertCircle size={12} className="shrink-0" /> Call tracking is not yet configured. Add a Twilio number in API Connections to enable call attribution.
-          </div>
-        </div>
-      );
-
-      case 6: return (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3">
-            <div><Label className="text-xs">Headline 1 (max 30 chars)</Label><Input value={form.headline1} onChange={(e) => setField("headline1", e.target.value)} maxLength={30} className="mt-1" /></div>
-            <div><Label className="text-xs">Headline 2</Label><Input value={form.headline2} onChange={(e) => setField("headline2", e.target.value)} maxLength={30} className="mt-1" /></div>
-            <div><Label className="text-xs">Headline 3</Label><Input value={form.headline3} onChange={(e) => setField("headline3", e.target.value)} maxLength={30} className="mt-1" /></div>
-            <div><Label className="text-xs">Description 1 (max 90 chars)</Label><Textarea value={form.desc1} onChange={(e) => setField("desc1", e.target.value)} maxLength={90} className="mt-1 h-16 text-xs" /></div>
-            <div><Label className="text-xs">Description 2</Label><Textarea value={form.desc2} onChange={(e) => setField("desc2", e.target.value)} maxLength={90} className="mt-1 h-16 text-xs" /></div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><Wand2 size={11} /> Generate Ad Copy</Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><Plus size={11} /> Add Sitelinks</Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><Plus size={11} /> Add Callouts</Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><Shield size={11} /> Request Creative Approval</Button>
-          </div>
-        </div>
-      );
-
-      case 7: return (
-        <div className="space-y-4">
-          <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2">
-            <Brain size={14} className="text-primary shrink-0" />
-            <p className="text-xs text-muted-foreground">SPARK AI has generated your paid search plan based on the inputs above. Review and adjust before proceeding to approval.</p>
-          </div>
-          {[
-            { label: "Campaign Structure", value: "Single account — Google Ads. 3 ad groups: Brand Core, Non-Brand Exact, Non-Brand Phrase." },
-            { label: "Platform Recommendation", value: "Google Ads for primary volume. Add Microsoft Advertising (Bing) in Month 2 for ~15% additional reach at 30% lower CPCs." },
-            { label: "Keyword Strategy", value: `${form.brandKeywords.split(",").length} brand, ${form.nonBrandKeywords.split(",").length} non-brand, ${form.competitorKeywords.split(",").length} competitor terms. Exact match priority with phrase match secondary.` },
-            { label: "Negative Keywords", value: `${form.negativeKeywords.split(",").length} negatives configured. Recommend reviewing search terms after 7 days live.` },
-            { label: "Budget Recommendation", value: `$${Number(form.budget).toLocaleString()}/month. $${form.dailyBudget}/day with Balanced pacing. Expect ${Math.round(Number(form.budget) / Number(form.targetCpa))}–${Math.round(Number(form.budget) / Number(form.targetCpa) * 1.3)} leads/month.` },
-            { label: "Bidding Recommendation", value: `Start with Target CPA ($${form.targetCpa}) with Max CPC cap of $${form.maxCpc}. Switch to Target ROAS after 50+ conversions.` },
-            { label: "Landing Page", value: "Current LP conversion rate is 3.2%. Recommend A/B testing a shorter form (2 fields) against current 5-field form before scaling." },
-            { label: "Tracking Checklist", value: "GA4 event: configured. UTM tagging: configured. CRM source mapping: configured. Call tracking: NOT configured." },
-            { label: "Risk Flags", value: "⚠ Call tracking missing — phone leads will not be attributed. ⚠ No RLSA audiences configured yet — add after 30 days." },
-          ].map((item) => (
-            <div key={item.label} className="grid grid-cols-[140px_1fr] gap-3 text-xs">
-              <p className="text-muted-foreground font-medium">{item.label}</p>
-              <p className="text-foreground">{item.value}</p>
-            </div>
-          ))}
-        </div>
-      );
-
-      case 8: return (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">Complete the approval checklist before launching.</p>
-          {[
-            { label: "Budget Approved", checked: false, required: true },
-            { label: "Keywords Approved", checked: true, required: true },
-            { label: "Ad Copy Approved", checked: false, required: true },
-            { label: "Tracking Verified", checked: true, required: true },
-            { label: "Landing Page Approved", checked: true, required: false },
-            { label: "Launch Approved", checked: false, required: true },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-3">
-              {item.checked ? <CheckCircle size={16} className="text-green-400 shrink-0" /> : <XCircle size={16} className="text-muted-foreground shrink-0" />}
-              <span className={`text-sm ${item.checked ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
-              {item.required && !item.checked && <Badge variant="outline" className="text-xs border-red-500/30 text-red-300 ml-auto">Required</Badge>}
-              {item.checked && <Badge variant="outline" className="text-xs border-green-500/30 text-green-300 ml-auto">Done</Badge>}
-            </div>
-          ))}
-          <Separator className="bg-border/40" />
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5"><FileText size={13} /> Save Draft</Button>
-            <Button variant="outline" size="sm" className="gap-1.5"><Bell size={13} /> Request Approval</Button>
-            <Button variant="outline" size="sm" className="gap-1.5"><Play size={13} /> Simulate Launch</Button>
-            <Button size="sm" className="gap-1.5"><RefreshCw size={13} /> Simulate Sync to Platform</Button>
-          </div>
-        </div>
-      );
-
-      default: return null;
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <MonitorPlay size={16} className="text-primary" />
-            {isEdit ? "Edit" : "New"} Search Campaign
-          </DialogTitle>
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-              <span>Step {step + 1} of {WIZARD_STEPS.length}: <span className="text-foreground font-medium">{WIZARD_STEPS[step]}</span></span>
-              <span>{pct}%</span>
-            </div>
-            <Progress value={pct} className="h-1.5" />
-            <div className="flex gap-1 mt-2 overflow-x-auto pb-1">
-              {WIZARD_STEPS.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => setStep(i)}
-                  className={`shrink-0 text-xs px-2 py-0.5 rounded transition-colors ${i === step ? "bg-primary text-primary-foreground" : i < step ? "bg-muted/60 text-foreground" : "text-muted-foreground"}`}
-                >{i + 1}</button>
-              ))}
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto pr-1 py-2">
-          {renderStep()}
-        </div>
-
-        <DialogFooter className="shrink-0 border-t border-border/40 pt-4 mt-2">
-          <Button variant="outline" onClick={() => step > 0 ? setStep(step - 1) : onClose()} className="gap-1.5">
-            <ChevronLeft size={14} /> {step === 0 ? "Cancel" : "Back"}
-          </Button>
-          {step < WIZARD_STEPS.length - 1 ? (
-            <Button onClick={() => setStep(step + 1)} className="gap-1.5">
-              Next <ChevronRight size={14} />
-            </Button>
-          ) : (
-            <Button onClick={handleFinish} disabled={saving} className="gap-1.5">
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-              {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Campaign"}
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Generate Ad Copy Dialog ──────────────────────────────────────────────────
-
-function GenerateCopyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [product, setProduct] = useState("");
-  const [audience, setAudience] = useState("");
-  const [tone, setTone] = useState("professional");
-  const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
-
-  const handleGenerate = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setResults([
-      { platform: "Google Ads", headline1: "SPARK AI — Marketing Suite", headline2: "AI Plans Your Campaigns", desc: `${product || "AI-powered marketing"} for ${audience || "growth teams"}. Plan, launch and optimise from one platform.` },
-      { platform: "Google Ads", headline1: "Replace Your Agency With AI", headline2: "Free 14-Day Trial", desc: `${product || "SPARK AI"} automates campaign planning, keyword research and ad copy. No expertise required.` },
-      { platform: "Microsoft Advertising", headline1: "Best Marketing AI Platform", headline2: "Start Free Today", desc: `${product || "Marketing automation"} powered by AI. Connect Google, Bing and more. 2,000+ teams trust SPARK AI.` },
-    ]);
-    setLoading(false);
-  };
-
-  const copy = (text: string, i: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIdx(i);
-    setTimeout(() => setCopiedIdx(null), 2000);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Wand2 size={16} className="text-primary" /> Generate Search Ad Copy</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div><Label className="text-xs">Product / Service</Label><Input placeholder="e.g. SPARK AI — AI marketing platform" value={product} onChange={(e) => setProduct(e.target.value)} className="mt-1" /></div>
-          <div><Label className="text-xs">Target Audience</Label><Input placeholder="e.g. Marketing managers at B2B SaaS companies" value={audience} onChange={(e) => setAudience(e.target.value)} className="mt-1" /></div>
-          <div>
-            <Label className="text-xs">Tone</Label>
-            <div className="flex gap-2 mt-1">
-              {["professional", "urgent", "friendly", "bold"].map((t) => (
-                <button key={t} onClick={() => setTone(t)} className={`text-xs px-3 py-1.5 rounded border capitalize transition-colors ${tone === t ? "border-primary/60 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground"}`}>{t}</button>
-              ))}
-            </div>
-          </div>
-          {results.length > 0 && (
-            <div className="space-y-3 max-h-56 overflow-y-auto">
-              {results.map((r, i) => (
-                <div key={i} className="p-3 rounded-lg border border-border/60 bg-card/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="text-xs">{r.platform}</Badge>
-                    <button onClick={() => copy(`${r.headline1} | ${r.headline2}\n${r.desc}`, i)} className="text-muted-foreground hover:text-foreground transition-colors">
-                      {copiedIdx === i ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
-                    </button>
-                  </div>
-                  <p className="text-sm font-semibold">{r.headline1}</p>
-                  <p className="text-xs text-primary">{r.headline2}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{r.desc}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button onClick={handleGenerate} disabled={loading} data-testid="btn-generate-copy">
-            {loading ? <Loader2 size={14} className="animate-spin mr-1" /> : <Wand2 size={14} className="mr-1" />}
-            {loading ? "Generating…" : "Generate Copy"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ─── Main PPC Component ───────────────────────────────────────────────────────
 
 export default function PPC() {
-  const [campaigns] = useState<SearchCampaign[]>(CAMPAIGNS);
-  const [showWizard, setShowWizard] = useState(false);
-  const [editCampaign, setEditCampaign] = useState<SearchCampaign | undefined>();
-  const [showCopyDialog, setShowCopyDialog] = useState(false);
+  const [campaigns] = useState<SparkCampaign[]>(MOCK_CAMPAIGNS);
+  const [showGuided, setShowGuided] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const { toast } = useToast();
-
-  const handleNew = () => { setEditCampaign(undefined); setShowWizard(true); };
-  const handleEdit = (c: SearchCampaign) => { setEditCampaign(c); setShowWizard(true); };
-  const handleSync = () => { toast({ title: "Syncing search accounts…", description: "Google Ads and Microsoft Advertising are syncing." }); };
 
   const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
   const totalBudget = campaigns.reduce((s, c) => s + c.budget, 0);
   const activeCampaigns = campaigns.filter((c) => c.status === "live" || c.status === "optimising").length;
-  const totalLeads = campaigns.reduce((s, c) => s + c.conversions, 0);
-  const qualifiedLeads = campaigns.reduce((s, c) => s + c.qualifiedLeads, 0);
-  const avgCpc = campaigns.filter((c) => c.avgCpc > 0).reduce((s, c, _, a) => s + c.avgCpc / a.length, 0);
   const trackingIssues = campaigns.filter((c) => c.trackingStatus !== "ok").length;
-  const aiOpportunities = 8;
-
-  const kpis = [
-    { label: "Active Campaigns", value: activeCampaigns, color: "text-primary", icon: <Play size={14} className="text-primary" /> },
-    { label: "Monthly Spend", value: `$${(totalSpend / 1000).toFixed(1)}k`, color: "text-amber-400", icon: <DollarSign size={14} className="text-amber-400" /> },
-    { label: "Budget Remaining", value: `$${((totalBudget - totalSpend) / 1000).toFixed(1)}k`, color: "text-green-400", icon: <TrendingUp size={14} className="text-green-400" /> },
-    { label: "Avg CPC", value: `$${avgCpc.toFixed(2)}`, color: "text-muted-foreground", icon: <BarChart2 size={14} className="text-muted-foreground" /> },
-    { label: "Cost per Lead", value: `$${(totalSpend / (totalLeads || 1)).toFixed(0)}`, color: "text-muted-foreground", icon: <Target size={14} className="text-muted-foreground" /> },
-    { label: "Qualified Leads", value: qualifiedLeads, color: "text-accent", icon: <CheckCircle size={14} className="text-accent" /> },
-    { label: "Tracking Issues", value: trackingIssues, color: trackingIssues > 0 ? "text-red-400" : "text-green-400", icon: <AlertCircle size={14} className={trackingIssues > 0 ? "text-red-400" : "text-green-400"} /> },
-    { label: "AI Opportunities", value: aiOpportunities, color: "text-purple-400", icon: <Zap size={14} className="text-purple-400" /> },
-  ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="heading-ppc">
-            <MonitorPlay size={20} className="text-primary" /> PPC / Paid Search Workbench
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">Plan, connect, launch, optimise, and report on paid search campaigns across Google, Bing, Baidu, Naver, and other search ad platforms.</p>
-        </div>
-        <div className="flex flex-wrap gap-2 shrink-0">
-          <Button onClick={handleNew} className="gap-1.5 text-xs h-8"><Plus size={13} /> New Search Campaign</Button>
-          <Button variant="outline" className="gap-1.5 text-xs h-8"><Upload size={13} /> Import from Network</Button>
-          <Button variant="outline" className="gap-1.5 text-xs h-8" onClick={handleSync}><RefreshCw size={13} /> Sync Accounts</Button>
-          <Button variant="outline" className="gap-1.5 text-xs h-8" onClick={() => setShowCopyDialog(true)}><Wand2 size={13} /> Generate Ad Copy</Button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="heading-ppc">
+          <MonitorPlay size={20} className="text-primary" /> PPC / Paid Search Workbench
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">Plan, connect, launch, optimise, and report on paid search campaigns across Google, Bing, Baidu, Naver, and other search ad platforms.</p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        {kpis.map((kpi) => (
-          <Card key={kpi.label} className="border-border/60 bg-card" data-testid={`kpi-${kpi.label.toLowerCase().replace(/\s+/g, "-")}`}>
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1.5 mb-1">{kpi.icon}<p className="text-xs text-muted-foreground truncate">{kpi.label}</p></div>
-              <p className={`text-xl font-bold ${kpi.color}`}>{kpi.value}</p>
+      {/* Top KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Active Campaigns", value: activeCampaigns, icon: <Play size={13} className="text-primary" />, color: "text-primary" },
+          { label: "Monthly Spend", value: `$${(totalSpend / 1000).toFixed(1)}k`, icon: <DollarSign size={13} className="text-amber-400" />, color: "text-amber-400" },
+          { label: "Budget Remaining", value: `$${((totalBudget - totalSpend) / 1000).toFixed(1)}k`, icon: <TrendingUp size={13} className="text-green-400" />, color: "text-green-400" },
+          { label: "Tracking Issues", value: trackingIssues, icon: <AlertCircle size={13} className={trackingIssues > 0 ? "text-red-400" : "text-green-400"} />, color: trackingIssues > 0 ? "text-red-400" : "text-green-400" },
+        ].map((kpi) => (
+          <Card key={kpi.label} className="border-border/60 bg-card">
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-muted/30 flex items-center justify-center shrink-0">{kpi.icon}</div>
+              <div>
+                <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                <p className={`text-lg font-bold ${kpi.color}`}>{kpi.value}</p>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Workflow Board */}
-      <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Campaign Workflow Status</p>
-        <WorkflowBoard campaigns={campaigns} />
+      {/* Three hero action cards */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 hover:border-primary/60 transition-colors cursor-pointer group" onClick={() => setShowGuided(true)} data-testid="card-guided-wizard">
+          <CardContent className="p-6 flex flex-col h-full">
+            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mb-4 group-hover:bg-primary/30 transition-colors">
+              <Star size={18} className="text-primary" />
+            </div>
+            <p className="font-bold text-base mb-1">Guided Campaign Wizard</p>
+            <p className="text-sm text-muted-foreground flex-1">Let SPARK guide you from business goal to a complete paid search campaign plan — no PPC expertise required.</p>
+            <Button className="mt-5 gap-1.5 w-full" onClick={() => setShowGuided(true)}>
+              <Sparkles size={14} /> Start Guided Campaign
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60 bg-card hover:border-border transition-colors" data-testid="card-advanced-setup">
+          <CardContent className="p-6 flex flex-col h-full">
+            <div className="w-10 h-10 rounded-xl bg-muted/40 flex items-center justify-center mb-4">
+              <Settings size={18} className="text-muted-foreground" />
+            </div>
+            <p className="font-bold text-base mb-1">Advanced Campaign Setup</p>
+            <p className="text-sm text-muted-foreground flex-1">Build a search campaign with full control over keywords, match types, bids, ad copy, extensions, and conversion tracking.</p>
+            <Button variant="outline" className="mt-5 gap-1.5 w-full" onClick={() => setShowAdvanced(true)}>
+              <Plus size={14} /> Create Advanced Campaign
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60 bg-card hover:border-border transition-colors" data-testid="card-import">
+          <CardContent className="p-6 flex flex-col h-full">
+            <div className="w-10 h-10 rounded-xl bg-muted/40 flex items-center justify-center mb-4">
+              <Upload size={18} className="text-muted-foreground" />
+            </div>
+            <p className="font-bold text-base mb-1">Import & Optimise Existing Campaigns</p>
+            <p className="text-sm text-muted-foreground flex-1">Connect your search ad account and let SPARK find what to fix, pause, scale, or rewrite across your existing campaigns.</p>
+            <Button variant="outline" className="mt-5 gap-1.5 w-full" onClick={() => toast({ title: "Import started", description: "Syncing connected search ad accounts…" })}>
+              <RefreshCw size={14} /> Import Campaigns
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs section */}
       <Tabs defaultValue="campaigns">
         <TabsList className="bg-card border border-border flex-wrap h-auto gap-0.5 p-1">
-          {["campaigns", "plan", "accounts", "keywords", "bidding", "ads", "tracking", "recommendations", "approvals", "reports"].map((t) => (
-            <TabsTrigger key={t} value={t} className="text-xs capitalize" data-testid={`tab-${t}`}>
-              {t === "campaigns" ? "Campaigns" : t === "plan" ? "Create / Plan" : t === "accounts" ? "Search Ad Accounts" : t === "keywords" ? "Keywords" : t === "bidding" ? "Bidding & Budget" : t === "ads" ? "Ads & Extensions" : t === "tracking" ? "Landing Page & Tracking" : t === "recommendations" ? "AI Recommendations" : t === "approvals" ? "Approvals" : "Reports"}
-            </TabsTrigger>
+          {[["campaigns", "Search Campaigns"], ["keywords", "Keywords"], ["recommendations", "AI Recommendations"], ["approvals", "Approvals"], ["reports", "Reports"]].map(([v, l]) => (
+            <TabsTrigger key={v} value={v} className="text-xs" data-testid={`tab-${v}`}>{l}</TabsTrigger>
           ))}
         </TabsList>
 
         <div className="mt-4">
-          <TabsContent value="campaigns"><CampaignsTab campaigns={campaigns} onEdit={handleEdit} onNew={handleNew} /></TabsContent>
-          <TabsContent value="plan">
-            <Card className="border-border/60 bg-card">
-              <CardContent className="p-8 flex flex-col items-center justify-center gap-4 text-center">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Wand2 size={22} className="text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold">Create a New Search Campaign</p>
-                  <p className="text-sm text-muted-foreground mt-1">Use the 9-step wizard to plan, configure, and launch a paid search campaign from scratch or link it to an existing SPARK master campaign.</p>
-                </div>
-                <Button onClick={handleNew} className="gap-1.5"><Plus size={14} /> New Search Campaign</Button>
-              </CardContent>
-            </Card>
+          <TabsContent value="campaigns">
+            <div className="mb-3">
+              <p className="text-sm font-semibold">Existing Search Campaigns</p>
+              <p className="text-xs text-muted-foreground">Each SPARK campaign can run across multiple search platforms. Click a campaign to view its platform-specific plans.</p>
+            </div>
+            <CampaignTable campaigns={campaigns} onEdit={() => setShowGuided(true)} />
           </TabsContent>
-          <TabsContent value="accounts"><SearchAdAccountsTab /></TabsContent>
-          <TabsContent value="keywords"><KeywordsTab /></TabsContent>
-          <TabsContent value="bidding"><BiddingBudgetTab campaigns={campaigns} /></TabsContent>
-          <TabsContent value="ads"><AdsExtensionsTab onGenerateCopy={() => setShowCopyDialog(true)} /></TabsContent>
-          <TabsContent value="tracking"><LandingTrackingTab campaigns={campaigns} /></TabsContent>
-          <TabsContent value="recommendations"><AIRecommendationsTab /></TabsContent>
-          <TabsContent value="approvals"><ApprovalsTab /></TabsContent>
-          <TabsContent value="reports"><ReportsTab /></TabsContent>
+          <TabsContent value="keywords"><QuickKeywordsTab /></TabsContent>
+          <TabsContent value="recommendations"><QuickRecsTab /></TabsContent>
+          <TabsContent value="approvals">
+            <div className="space-y-3">
+              {[
+                { title: "Budget approval — Enterprise Lead Gen", type: "Budget", amount: "$18,000/mo", by: "Sarah Park", time: "2h ago", urgency: "high" },
+                { title: "Keyword approval — Baidu China Expansion", type: "Keyword", amount: "142 keywords", by: "Priya Sharma", time: "4h ago", urgency: "medium" },
+                { title: "Ad copy approval — Competitor Conquest v2", type: "Ad Copy", amount: "6 variants", by: "David Lee", time: "Yesterday", urgency: "medium" },
+              ].map((item, i) => (
+                <Card key={i} className={`border-border/60 bg-card ${item.urgency === "high" ? "border-amber-500/30" : ""}`}>
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className="text-xs border-border/50 text-muted-foreground">{item.type}</Badge>
+                        {item.urgency === "high" && <Badge variant="outline" className="text-xs border-amber-500/30 text-amber-300">Urgent</Badge>}
+                      </div>
+                      <p className="text-sm font-medium">{item.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.amount} · by {item.by} · {item.time}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-red-500/30 text-red-300">Reject</Button>
+                      <Button size="sm" className="h-7 text-xs gap-1"><CheckCircle size={11} /> Approve</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+          <TabsContent value="reports">
+            <div className="grid md:grid-cols-3 gap-4">
+              {["Campaign Performance Summary", "Platform Comparison (Google vs Bing)", "Keyword Performance", "Budget Pacing", "Lead Quality & CRM Attribution", "AI Executive Summary"].map((r, i) => (
+                <Card key={i} className="border-border/60 bg-card hover:border-primary/30 transition-colors cursor-pointer">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center"><FileText size={14} className="text-primary" /></div>
+                    <p className="text-sm font-semibold">{r}</p>
+                    <div className="flex gap-2"><Button size="sm" variant="outline" className="h-7 text-xs flex-1 gap-1"><Eye size={11} /> View</Button><Button size="sm" variant="ghost" className="h-7 px-2"><Download size={11} /></Button></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
         </div>
       </Tabs>
 
-      <CampaignWizard open={showWizard} onClose={() => setShowWizard(false)} editCampaign={editCampaign} />
-      <GenerateCopyDialog open={showCopyDialog} onClose={() => setShowCopyDialog(false)} />
+      <GuidedWizard open={showGuided} onClose={() => setShowGuided(false)} />
+
+      {/* Advanced dialog placeholder */}
+      <Dialog open={showAdvanced} onOpenChange={setShowAdvanced}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Advanced Campaign Setup</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">The advanced 9-step campaign builder gives you full control over every PPC setting. Use this if you're an experienced PPC manager who wants to configure keywords, match types, bids, and tracking manually.</p>
+          <div className="flex gap-2 mt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setShowAdvanced(false)}>Cancel</Button>
+            <Button className="flex-1 gap-1.5" onClick={() => { setShowAdvanced(false); setShowGuided(true); }}>
+              <Sparkles size={13} /> Use Guided Wizard Instead
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

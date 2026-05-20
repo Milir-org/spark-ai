@@ -1,0 +1,190 @@
+Redesign the PPC / Paid Search campaign setup flow to be simple, guided, and suitable for solopreneurs and small teams who may not be PPC experts.
+
+Important product model:
+A user creates one SPARK Paid Search Campaign. That campaign can contain multiple platform-specific campaign plans for Google Ads, Microsoft Advertising/Bing, Baidu, Naver, and Yahoo Japan placeholder.
+
+Do not make the user feel like they are manually creating separate campaigns for every platform. The workflow should feel like:
+“One campaign goal → choose platforms → SPARK creates platform-specific plans.”
+
+Main PPC Workbench layout:
+At the top, show three large action cards:
+1. Guided Campaign Wizard
+Description: Let SPARK guide you from business goal to paid search campaign plan.
+Button: Start Guided Campaign
+
+2. Advanced Campaign Setup
+Description: Build a search campaign with full control over keywords, bids, ads, and tracking.
+Button: Create Advanced Campaign
+
+3. Import & Optimise Existing Campaigns
+Description: Connect your search ad account and let SPARK find what to fix, pause, scale, or rewrite.
+Button: Import Campaigns
+
+Below these cards, show Existing Search Campaigns table with:
+- Campaign name
+- Platforms
+- Primary goal
+- Status
+- Budget
+- Spend
+- Avg CPC
+- Conversions
+- Cost per lead
+- Tracking status
+- SPARK recommendation
+- Approval status
+- Actions
+
+Actions:
+- View
+- Edit
+- Optimise
+- Duplicate
+- Request Approval
+
+Now build the Guided Campaign Wizard.
+
+Wizard layout:
+Use a clean two-column layout.
+Left side: campaign setup form.
+Right side: persistent SPARK Brain panel.
+Top: progress indicator.
+
+Wizard steps:
+1. Goal
+2. Offer & Audience
+3. Platforms & Budget
+4. Keywords & Search Intent
+5. Ads, Tracking & Campaign Pack
+6. Review & Approval
+
+Step 1: Goal
+Ask:
+- Primary goal: Leads, Sales, Bookings, Website Traffic, Brand Protection, Competitor Conquest, Local Enquiries
+- Secondary goals: allow multiple selection
+- Guardrails: max CPL, max daily spend, do not launch without tracking, location restrictions
+- Campaign urgency: Test, Normal, Aggressive
+
+Rule:
+Only one primary goal is allowed. Secondary goals can be multiple. SPARK Brain should explain that the primary goal drives optimisation while secondary goals are tracked.
+
+Step 2: Offer & Audience
+Ask:
+- Product or service being promoted
+- Offer or call-to-action
+- Target geography
+- Target customer type
+- Landing page URL
+- Exclusions or restrictions
+
+SPARK Brain should summarise the audience and warn if the offer is vague.
+
+Step 3: Platforms & Budget
+Ask:
+- Platform selection mode: Let SPARK recommend platforms / I will choose manually
+- Platforms: Google Ads, Microsoft Advertising/Bing, Baidu, Naver, Yahoo Japan placeholder
+- Total budget
+- Campaign duration
+- Daily budget
+- Budget style: Conservative, Balanced, Aggressive
+
+SPARK Brain should generate recommended budget allocation across selected platforms.
+
+Example:
+Google Ads 70%
+Microsoft/Bing 20%
+Naver 10%
+Baidu not recommended unless targeting China traffic
+
+Show platform cards with:
+- platform name
+- recommended budget
+- estimated CPC/bid forecast range
+- recommended campaign template
+- tracking status
+- readiness status
+
+Do not call this real-time exact bid pricing. Use “estimated CPC / bid forecast”.
+
+Step 4: Keywords & Search Intent
+Ask:
+- What would customers search for?
+- Brand keywords
+- Service/product keywords
+- Competitor keywords
+- Location keywords
+- Negative keywords
+
+SPARK Brain should generate:
+- keyword groups
+- high-intent keywords
+- suggested match types
+- negative keyword suggestions
+- platform-specific keyword notes
+
+Step 5: Ads, Tracking & Campaign Pack
+Generate campaign assets based on goal, audience, platforms, keywords, landing page and brand rules.
+
+Show:
+- ad headlines
+- ad descriptions
+- sitelinks
+- callouts
+- structured snippets placeholder
+- CTA suggestions
+- final URL
+- UTM structure
+- GA4 conversion event
+- CRM lead source mapping
+- tracking checklist
+- launch readiness warnings
+
+Ad copy generation should happen only here, not as a top-level page button.
+
+Step 6: Review & Approval
+Show final SPARK Paid Search Campaign Plan.
+
+Sections:
+- campaign summary
+- primary and secondary goals
+- guardrails
+- selected platforms
+- platform-specific campaign cards
+- budget allocation
+- keyword plan
+- ad copy
+- landing page and tracking checklist
+- risk warnings
+- approval requirements
+- launch readiness score
+
+Approval checklist:
+- budget approval
+- keyword approval
+- ad copy approval
+- tracking approval
+- launch approval
+
+Buttons:
+- Save Draft
+- Request Approval
+- Create Platform Drafts
+- Simulate Launch
+- Simulate Sync to Search Platforms
+
+SPARK Brain behaviour:
+The SPARK Brain panel should appear throughout the wizard and update based on the current step.
+
+It should show:
+- summary of current choices
+- AI recommendations
+- missing information
+- risk warnings
+- suggested next action
+
+Use realistic mock AI outputs. The app does not need real platform integration yet.
+
+Important UX rule:
+The wizard should not feel like Google Ads. It should feel like SPARK is guiding a non-expert user through the campaign setup intelligently.
+
+Do not overload the wizard with advanced PPC fields. Put advanced controls under expandable “Advanced Options”.
