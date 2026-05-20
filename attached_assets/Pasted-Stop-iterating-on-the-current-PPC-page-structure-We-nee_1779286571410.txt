@@ -1,0 +1,91 @@
+Stop iterating on the current PPC page structure.
+
+We need a workflow reset, not another cleanup pass.
+
+Current problem:
+The PPC experience still feels clumsy, dense, and too much like an enterprise dashboard. It has improved structurally, but it still does not feel intuitive, premium, or modern. It still feels like a control panel, not a guided campaign design experience.
+
+New direction:
+Rebuild `PPC.tsx` as a Typeform-like, big-question, full-screen campaign creation flow.
+
+Do not preserve the current overview + right rail + dense section stack as the flagship creation experience.
+
+Goal:
+Make the PPC creation experience feel:
+- calm
+- premium
+- spacious
+- human
+- AI-guided
+- easy for non-experts
+- still useful for experts
+
+Core interaction model:
+1. Full-screen creation flow
+2. One big question at a time
+3. Very large typography
+4. Minimal controls on each screen
+5. Strong progress sense
+6. One clear primary action per screen
+
+Question flow:
+1. What is this campaign called?
+2. What is the primary objective?
+3. Any secondary objectives?
+4. What are you promoting?
+5. Who are you trying to reach?
+6. Which geography?
+7. What landing page should traffic go to?
+8. What budget range are you comfortable with?
+9. How aggressively should we spend?
+
+After these questions:
+SPARK should generate a campaign blueprint.
+
+Blueprint reveal:
+Make this feel like a major moment.
+Show:
+- strategic angle
+- recommended platform mix
+- keyword themes
+- negative keyword themes
+- ad direction
+- tracking guidance
+- provider readiness
+- approval readiness
+
+Important:
+This should feel like SPARK is presenting a smart plan, not dumping a form result.
+
+Refinement:
+After blueprint generation, let the user refine the plan inline.
+This can be a second mode/state, but still keep it spacious and premium.
+
+Visual rules:
+- much bigger type
+- much fewer borders
+- much more whitespace
+- no cramped sidebars
+- no tiny labels as primary UI
+- no dashboard-style mini cards in the creation flow
+- no AWS/admin console feel
+- avoid too many simultaneous decisions
+- use a strong sense of rhythm and pacing
+
+Do not:
+- keep the current right readiness rail as-is
+- keep the current box-heavy review structure as-is
+- keep the current compact dashboard grammar for creation
+- just enlarge fonts slightly
+
+Do:
+- redesign the creation workflow around sequential big questions
+- make the generated blueprint the emotional centerpiece
+- make the flow feel premium and modern
+
+Constraints:
+- only refactor the PPC creation experience first
+- preserve existing API integration where possible
+- keep NewCampaign redirect behavior
+- keep the app runnable
+- prototype-friendly is fine, but the UX direction must fundamentally change
