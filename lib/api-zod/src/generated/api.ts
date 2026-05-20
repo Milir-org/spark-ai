@@ -113,6 +113,8 @@ export const ListCampaignsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "objective": zod.enum(['lead_generation', 'sales', 'awareness', 'website_traffic', 'retention', 'reactivation', 'event_promotion', 'product_launch']),
+  "primaryObjective": zod.string().nullish(),
+  "secondaryObjectives": zod.array(zod.string()).optional(),
   "status": zod.enum(['draft', 'planning', 'awaiting_approval', 'ready_to_launch', 'active', 'optimising', 'paused', 'completed']),
   "budget": zod.number(),
   "dailyBudget": zod.number().nullish(),
@@ -125,12 +127,15 @@ export const ListCampaignsResponseItem = zod.object({
   "targetAudience": zod.string().nullish(),
   "productDescription": zod.string().nullish(),
   "spendStyle": zod.string().nullish(),
+  "geography": zod.string().nullish(),
+  "landingPage": zod.string().nullish(),
   "healthScore": zod.number().nullish(),
   "leadsGenerated": zod.number().nullish(),
   "spend": zod.number().nullish(),
   "blueprint": zod.union([zod.object({
   "id": zod.number(),
   "campaignId": zod.number(),
+  "strategicAngle": zod.string().nullish(),
   "strategySummary": zod.string(),
   "audienceStrategy": zod.string(),
   "budgetPlan": zod.string(),
@@ -138,9 +143,53 @@ export const ListCampaignsResponseItem = zod.object({
   "creativePlan": zod.string(),
   "experimentPlan": zod.string(),
   "measurementPlan": zod.string(),
-  "executionChecklist": zod.array(zod.string()),
-  "approvalRequirements": zod.array(zod.string()).optional()
+  "trackingPlan": zod.string().nullish(),
+  "platformStrategy": zod.array(zod.object({
+  "name": zod.string(),
+  "budgetPct": zod.number(),
+  "rationale": zod.string(),
+  "recommended": zod.boolean()
+})).optional(),
+  "keywordThemes": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "intent": zod.string(),
+  "keywords": zod.array(zod.string()),
+  "approved": zod.boolean().nullish()
+})).optional(),
+  "negativeKeywordThemes": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "rationale": zod.string(),
+  "terms": zod.array(zod.string())
+})).optional(),
+  "adDirection": zod.union([zod.object({
+  "angle": zod.string(),
+  "tone": zod.string(),
+  "headlines": zod.array(zod.string()),
+  "descriptions": zod.array(zod.string())
 }),zod.null()]).optional(),
+  "executionChecklist": zod.array(zod.string()),
+  "approvalRequirements": zod.array(zod.string()).optional(),
+  "risks": zod.array(zod.string()).optional(),
+  "assumptions": zod.array(zod.string()).optional()
+}),zod.null()]).optional(),
+  "providerDrafts": zod.array(zod.object({
+  "id": zod.number(),
+  "campaignId": zod.number(),
+  "provider": zod.enum(['google_ads', 'microsoft_advertising']),
+  "readinessScore": zod.number(),
+  "status": zod.enum(['not_started', 'draft_ready', 'validation_failed', 'synced', 'live']),
+  "validationIssues": zod.array(zod.object({
+  "field": zod.string(),
+  "severity": zod.enum(['error', 'warning', 'info']),
+  "message": zod.string()
+})).optional(),
+  "draftSummary": zod.string().nullish(),
+  "accountStatus": zod.string().nullish(),
+  "syncStatus": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})).optional(),
   "createdAt": zod.string()
 })
 export const ListCampaignsResponse = zod.array(ListCampaignsResponseItem)
@@ -152,6 +201,8 @@ export const ListCampaignsResponse = zod.array(ListCampaignsResponseItem)
 export const CreateCampaignBody = zod.object({
   "name": zod.string(),
   "objective": zod.string(),
+  "primaryObjective": zod.string().nullish(),
+  "secondaryObjectives": zod.array(zod.string()).optional(),
   "budget": zod.number(),
   "dailyBudget": zod.number().nullish(),
   "startDate": zod.string(),
@@ -159,7 +210,9 @@ export const CreateCampaignBody = zod.object({
   "channels": zod.array(zod.string()),
   "targetAudience": zod.string().nullish(),
   "productDescription": zod.string().nullish(),
-  "spendStyle": zod.string().nullish()
+  "spendStyle": zod.string().nullish(),
+  "geography": zod.string().nullish(),
+  "landingPage": zod.string().nullish()
 })
 
 
@@ -174,6 +227,8 @@ export const GetCampaignResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "objective": zod.enum(['lead_generation', 'sales', 'awareness', 'website_traffic', 'retention', 'reactivation', 'event_promotion', 'product_launch']),
+  "primaryObjective": zod.string().nullish(),
+  "secondaryObjectives": zod.array(zod.string()).optional(),
   "status": zod.enum(['draft', 'planning', 'awaiting_approval', 'ready_to_launch', 'active', 'optimising', 'paused', 'completed']),
   "budget": zod.number(),
   "dailyBudget": zod.number().nullish(),
@@ -186,12 +241,15 @@ export const GetCampaignResponse = zod.object({
   "targetAudience": zod.string().nullish(),
   "productDescription": zod.string().nullish(),
   "spendStyle": zod.string().nullish(),
+  "geography": zod.string().nullish(),
+  "landingPage": zod.string().nullish(),
   "healthScore": zod.number().nullish(),
   "leadsGenerated": zod.number().nullish(),
   "spend": zod.number().nullish(),
   "blueprint": zod.union([zod.object({
   "id": zod.number(),
   "campaignId": zod.number(),
+  "strategicAngle": zod.string().nullish(),
   "strategySummary": zod.string(),
   "audienceStrategy": zod.string(),
   "budgetPlan": zod.string(),
@@ -199,9 +257,53 @@ export const GetCampaignResponse = zod.object({
   "creativePlan": zod.string(),
   "experimentPlan": zod.string(),
   "measurementPlan": zod.string(),
-  "executionChecklist": zod.array(zod.string()),
-  "approvalRequirements": zod.array(zod.string()).optional()
+  "trackingPlan": zod.string().nullish(),
+  "platformStrategy": zod.array(zod.object({
+  "name": zod.string(),
+  "budgetPct": zod.number(),
+  "rationale": zod.string(),
+  "recommended": zod.boolean()
+})).optional(),
+  "keywordThemes": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "intent": zod.string(),
+  "keywords": zod.array(zod.string()),
+  "approved": zod.boolean().nullish()
+})).optional(),
+  "negativeKeywordThemes": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "rationale": zod.string(),
+  "terms": zod.array(zod.string())
+})).optional(),
+  "adDirection": zod.union([zod.object({
+  "angle": zod.string(),
+  "tone": zod.string(),
+  "headlines": zod.array(zod.string()),
+  "descriptions": zod.array(zod.string())
 }),zod.null()]).optional(),
+  "executionChecklist": zod.array(zod.string()),
+  "approvalRequirements": zod.array(zod.string()).optional(),
+  "risks": zod.array(zod.string()).optional(),
+  "assumptions": zod.array(zod.string()).optional()
+}),zod.null()]).optional(),
+  "providerDrafts": zod.array(zod.object({
+  "id": zod.number(),
+  "campaignId": zod.number(),
+  "provider": zod.enum(['google_ads', 'microsoft_advertising']),
+  "readinessScore": zod.number(),
+  "status": zod.enum(['not_started', 'draft_ready', 'validation_failed', 'synced', 'live']),
+  "validationIssues": zod.array(zod.object({
+  "field": zod.string(),
+  "severity": zod.enum(['error', 'warning', 'info']),
+  "message": zod.string()
+})).optional(),
+  "draftSummary": zod.string().nullish(),
+  "accountStatus": zod.string().nullish(),
+  "syncStatus": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})).optional(),
   "createdAt": zod.string()
 })
 
@@ -218,13 +320,19 @@ export const UpdateCampaignBody = zod.object({
   "status": zod.string().optional(),
   "budget": zod.number().optional(),
   "targetAudience": zod.string().optional(),
-  "productDescription": zod.string().optional()
+  "productDescription": zod.string().optional(),
+  "geography": zod.string().optional(),
+  "landingPage": zod.string().optional(),
+  "primaryObjective": zod.string().optional(),
+  "secondaryObjectives": zod.array(zod.string()).optional()
 })
 
 export const UpdateCampaignResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "objective": zod.enum(['lead_generation', 'sales', 'awareness', 'website_traffic', 'retention', 'reactivation', 'event_promotion', 'product_launch']),
+  "primaryObjective": zod.string().nullish(),
+  "secondaryObjectives": zod.array(zod.string()).optional(),
   "status": zod.enum(['draft', 'planning', 'awaiting_approval', 'ready_to_launch', 'active', 'optimising', 'paused', 'completed']),
   "budget": zod.number(),
   "dailyBudget": zod.number().nullish(),
@@ -237,12 +345,15 @@ export const UpdateCampaignResponse = zod.object({
   "targetAudience": zod.string().nullish(),
   "productDescription": zod.string().nullish(),
   "spendStyle": zod.string().nullish(),
+  "geography": zod.string().nullish(),
+  "landingPage": zod.string().nullish(),
   "healthScore": zod.number().nullish(),
   "leadsGenerated": zod.number().nullish(),
   "spend": zod.number().nullish(),
   "blueprint": zod.union([zod.object({
   "id": zod.number(),
   "campaignId": zod.number(),
+  "strategicAngle": zod.string().nullish(),
   "strategySummary": zod.string(),
   "audienceStrategy": zod.string(),
   "budgetPlan": zod.string(),
@@ -250,9 +361,53 @@ export const UpdateCampaignResponse = zod.object({
   "creativePlan": zod.string(),
   "experimentPlan": zod.string(),
   "measurementPlan": zod.string(),
-  "executionChecklist": zod.array(zod.string()),
-  "approvalRequirements": zod.array(zod.string()).optional()
+  "trackingPlan": zod.string().nullish(),
+  "platformStrategy": zod.array(zod.object({
+  "name": zod.string(),
+  "budgetPct": zod.number(),
+  "rationale": zod.string(),
+  "recommended": zod.boolean()
+})).optional(),
+  "keywordThemes": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "intent": zod.string(),
+  "keywords": zod.array(zod.string()),
+  "approved": zod.boolean().nullish()
+})).optional(),
+  "negativeKeywordThemes": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "rationale": zod.string(),
+  "terms": zod.array(zod.string())
+})).optional(),
+  "adDirection": zod.union([zod.object({
+  "angle": zod.string(),
+  "tone": zod.string(),
+  "headlines": zod.array(zod.string()),
+  "descriptions": zod.array(zod.string())
 }),zod.null()]).optional(),
+  "executionChecklist": zod.array(zod.string()),
+  "approvalRequirements": zod.array(zod.string()).optional(),
+  "risks": zod.array(zod.string()).optional(),
+  "assumptions": zod.array(zod.string()).optional()
+}),zod.null()]).optional(),
+  "providerDrafts": zod.array(zod.object({
+  "id": zod.number(),
+  "campaignId": zod.number(),
+  "provider": zod.enum(['google_ads', 'microsoft_advertising']),
+  "readinessScore": zod.number(),
+  "status": zod.enum(['not_started', 'draft_ready', 'validation_failed', 'synced', 'live']),
+  "validationIssues": zod.array(zod.object({
+  "field": zod.string(),
+  "severity": zod.enum(['error', 'warning', 'info']),
+  "message": zod.string()
+})).optional(),
+  "draftSummary": zod.string().nullish(),
+  "accountStatus": zod.string().nullish(),
+  "syncStatus": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})).optional(),
   "createdAt": zod.string()
 })
 
@@ -275,6 +430,7 @@ export const GenerateBlueprintParams = zod.object({
 export const GenerateBlueprintResponse = zod.object({
   "id": zod.number(),
   "campaignId": zod.number(),
+  "strategicAngle": zod.string().nullish(),
   "strategySummary": zod.string(),
   "audienceStrategy": zod.string(),
   "budgetPlan": zod.string(),
@@ -282,8 +438,36 @@ export const GenerateBlueprintResponse = zod.object({
   "creativePlan": zod.string(),
   "experimentPlan": zod.string(),
   "measurementPlan": zod.string(),
+  "trackingPlan": zod.string().nullish(),
+  "platformStrategy": zod.array(zod.object({
+  "name": zod.string(),
+  "budgetPct": zod.number(),
+  "rationale": zod.string(),
+  "recommended": zod.boolean()
+})).optional(),
+  "keywordThemes": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "intent": zod.string(),
+  "keywords": zod.array(zod.string()),
+  "approved": zod.boolean().nullish()
+})).optional(),
+  "negativeKeywordThemes": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "rationale": zod.string(),
+  "terms": zod.array(zod.string())
+})).optional(),
+  "adDirection": zod.union([zod.object({
+  "angle": zod.string(),
+  "tone": zod.string(),
+  "headlines": zod.array(zod.string()),
+  "descriptions": zod.array(zod.string())
+}),zod.null()]).optional(),
   "executionChecklist": zod.array(zod.string()),
-  "approvalRequirements": zod.array(zod.string()).optional()
+  "approvalRequirements": zod.array(zod.string()).optional(),
+  "risks": zod.array(zod.string()).optional(),
+  "assumptions": zod.array(zod.string()).optional()
 })
 
 
@@ -298,6 +482,8 @@ export const SubmitCampaignForApprovalResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "objective": zod.enum(['lead_generation', 'sales', 'awareness', 'website_traffic', 'retention', 'reactivation', 'event_promotion', 'product_launch']),
+  "primaryObjective": zod.string().nullish(),
+  "secondaryObjectives": zod.array(zod.string()).optional(),
   "status": zod.enum(['draft', 'planning', 'awaiting_approval', 'ready_to_launch', 'active', 'optimising', 'paused', 'completed']),
   "budget": zod.number(),
   "dailyBudget": zod.number().nullish(),
@@ -310,12 +496,15 @@ export const SubmitCampaignForApprovalResponse = zod.object({
   "targetAudience": zod.string().nullish(),
   "productDescription": zod.string().nullish(),
   "spendStyle": zod.string().nullish(),
+  "geography": zod.string().nullish(),
+  "landingPage": zod.string().nullish(),
   "healthScore": zod.number().nullish(),
   "leadsGenerated": zod.number().nullish(),
   "spend": zod.number().nullish(),
   "blueprint": zod.union([zod.object({
   "id": zod.number(),
   "campaignId": zod.number(),
+  "strategicAngle": zod.string().nullish(),
   "strategySummary": zod.string(),
   "audienceStrategy": zod.string(),
   "budgetPlan": zod.string(),
@@ -323,10 +512,97 @@ export const SubmitCampaignForApprovalResponse = zod.object({
   "creativePlan": zod.string(),
   "experimentPlan": zod.string(),
   "measurementPlan": zod.string(),
-  "executionChecklist": zod.array(zod.string()),
-  "approvalRequirements": zod.array(zod.string()).optional()
+  "trackingPlan": zod.string().nullish(),
+  "platformStrategy": zod.array(zod.object({
+  "name": zod.string(),
+  "budgetPct": zod.number(),
+  "rationale": zod.string(),
+  "recommended": zod.boolean()
+})).optional(),
+  "keywordThemes": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "intent": zod.string(),
+  "keywords": zod.array(zod.string()),
+  "approved": zod.boolean().nullish()
+})).optional(),
+  "negativeKeywordThemes": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "rationale": zod.string(),
+  "terms": zod.array(zod.string())
+})).optional(),
+  "adDirection": zod.union([zod.object({
+  "angle": zod.string(),
+  "tone": zod.string(),
+  "headlines": zod.array(zod.string()),
+  "descriptions": zod.array(zod.string())
 }),zod.null()]).optional(),
+  "executionChecklist": zod.array(zod.string()),
+  "approvalRequirements": zod.array(zod.string()).optional(),
+  "risks": zod.array(zod.string()).optional(),
+  "assumptions": zod.array(zod.string()).optional()
+}),zod.null()]).optional(),
+  "providerDrafts": zod.array(zod.object({
+  "id": zod.number(),
+  "campaignId": zod.number(),
+  "provider": zod.enum(['google_ads', 'microsoft_advertising']),
+  "readinessScore": zod.number(),
+  "status": zod.enum(['not_started', 'draft_ready', 'validation_failed', 'synced', 'live']),
+  "validationIssues": zod.array(zod.object({
+  "field": zod.string(),
+  "severity": zod.enum(['error', 'warning', 'info']),
+  "message": zod.string()
+})).optional(),
+  "draftSummary": zod.string().nullish(),
+  "accountStatus": zod.string().nullish(),
+  "syncStatus": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})).optional(),
   "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Get provider draft readiness for a campaign
+ */
+export const GetCampaignProviderDraftsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCampaignProviderDraftsResponseItem = zod.object({
+  "id": zod.number(),
+  "campaignId": zod.number(),
+  "provider": zod.enum(['google_ads', 'microsoft_advertising']),
+  "readinessScore": zod.number(),
+  "status": zod.enum(['not_started', 'draft_ready', 'validation_failed', 'synced', 'live']),
+  "validationIssues": zod.array(zod.object({
+  "field": zod.string(),
+  "severity": zod.enum(['error', 'warning', 'info']),
+  "message": zod.string()
+})).optional(),
+  "draftSummary": zod.string().nullish(),
+  "accountStatus": zod.string().nullish(),
+  "syncStatus": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+export const GetCampaignProviderDraftsResponse = zod.array(GetCampaignProviderDraftsResponseItem)
+
+
+/**
+ * @summary Get approval blockers for a campaign
+ */
+export const GetCampaignApprovalBlockersParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCampaignApprovalBlockersResponse = zod.object({
+  "blockers": zod.array(zod.object({
+  "type": zod.string().optional(),
+  "label": zod.string().optional(),
+  "severity": zod.string().optional()
+})),
+  "canSubmit": zod.boolean()
 })
 
 

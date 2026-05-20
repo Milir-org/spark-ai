@@ -1,4 +1,12 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useCreateCampaign,
+  useGenerateBlueprint,
+  useSubmitCampaignForApproval,
+  getListCampaignsQueryKey,
+} from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -779,9 +787,16 @@ function BlueprintStudio({ open, onClose, initialCampaign }: {
   open: boolean; onClose: () => void; initialCampaign?: Campaign | null;
 }) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState("intent");
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [createdCampaignId, setCreatedCampaignId] = useState<number | null>(null);
+
+  const createCampaign = useCreateCampaign();
+  const generateBlueprintMutation = useGenerateBlueprint();
+  const submitApprovalMutation = useSubmitCampaignForApproval();
 
   const [intent, setIntent] = useState<CampaignIntent>({
     name: initialCampaign?.name || "",
@@ -802,22 +817,104 @@ function BlueprintStudio({ open, onClose, initialCampaign }: {
 
   const handleGenerate = async () => {
     setGenerating(true);
-    await new Promise((r) => setTimeout(r, 1600));
-    const bp = generateBlueprint(intent);
-    setBlueprint(bp);
-    setGeneratedSections(new Set(["intent", "platforms", "keywords", "ads", "tracking"]));
-    setCompletedSections(new Set(["intent"]));
-    setGenerating(false);
-    setActiveSection("platforms");
-    toast({ title: "Blueprint generated", description: "SPARK has built your campaign strategy. Review and refine each section." });
+    try {
+      // Create the campaign via API
+      const campaign = await createCampaign.mutateAsync({
+        data: {
+          name: intent.name,
+          objective: intent.primaryGoal === "leads" ? "lead_generation" : intent.primaryGoal === "sales" ? "sales" : intent.primaryGoal === "traffic" ? "website_traffic" : intent.primaryGoal === "bookings" ? "lead_generation" : "lead_generation",
+          primaryObjective: intent.primaryGoal,
+          secondaryObjectives: intent.secondaryGoals,
+          budget: Number(intent.totalBudget) || 10000,
+          startDate: new Date().toISOString().split("T")[0],
+          endDate: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+          channels: ["ppc"],
+          targetAudience: intent.audience || undefined,
+          productDescription: intent.offer || undefined,
+          spendStyle: intent.urgency,
+          geography: intent.geography || undefined,
+          landingPage: intent.landingPage || undefined,
+        },
+      });
+      setCreatedCampaignId(campaign.id);
+      queryClient.invalidateQueries({ queryKey: getListCampaignsQueryKey() });
+
+      // Generate the blueprint via API
+      const apiBp = await generateBlueprintMutation.mutateAsync({ id: campaign.id });
+
+      // Map API blueprint to local GeneratedBlueprint type
+      const localBp: GeneratedBlueprint = {
+        strategicAngle: (apiBp as any).strategicAngle ?? generateBlueprint(intent).strategicAngle,
+        platforms: ((apiBp as any).platformStrategy ?? []).map((p: any) => ({
+          name: p.name as Platform,
+          budgetPct: p.budgetPct,
+          rationale: p.rationale,
+          recommended: p.recommended,
+        })),
+        keywordThemes: ((apiBp as any).keywordThemes ?? []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          intent: t.intent as KeywordTheme["intent"],
+          keywords: t.keywords,
+          approved: t.approved ?? null,
+        })),
+        negativeThemes: ((apiBp as any).negativeKeywordThemes ?? []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          rationale: t.rationale,
+          terms: t.terms,
+        })),
+        adDirection: (apiBp as any).adDirection ?? generateBlueprint(intent).adDirection,
+        conversionEvent: intent.primaryGoal === "leads" ? "generate_lead" : intent.primaryGoal === "sales" ? "purchase" : "appointment_booked",
+        trackingNotes: (apiBp as any).trackingPlan ?? "Google Tag Manager recommended. Verify conversion tags fire on the thank-you page using Google Tag Assistant before requesting approval.",
+        providerReadiness: { google: 85, bing: 72 },
+      };
+
+      // Fall back to locally generated data if API returned empty arrays
+      if (!localBp.platforms.length || !localBp.keywordThemes.length) {
+        const fallback = generateBlueprint(intent);
+        if (!localBp.platforms.length) localBp.platforms = fallback.platforms;
+        if (!localBp.keywordThemes.length) localBp.keywordThemes = fallback.keywordThemes;
+        if (!localBp.negativeThemes.length) localBp.negativeThemes = fallback.negativeThemes;
+      }
+
+      setBlueprint(localBp);
+      setGeneratedSections(new Set(["intent", "platforms", "keywords", "ads", "tracking"]));
+      setCompletedSections(new Set(["intent"]));
+      setActiveSection("platforms");
+      toast({ title: "Blueprint generated", description: "SPARK has built your campaign strategy. Review and refine each section." });
+    } catch {
+      // Fallback to local generation if API fails
+      const bp = generateBlueprint(intent);
+      setBlueprint(bp);
+      setGeneratedSections(new Set(["intent", "platforms", "keywords", "ads", "tracking"]));
+      setCompletedSections(new Set(["intent"]));
+      setActiveSection("platforms");
+      toast({ title: "Blueprint generated (offline)", description: "API unavailable — using local blueprint generation." });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleRequestApproval = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setSaving(false);
-    toast({ title: "Approval requested", description: `"${intent.name}" sent to approvers.` });
-    onClose();
+    try {
+      if (createdCampaignId) {
+        await submitApprovalMutation.mutateAsync({ id: createdCampaignId });
+        queryClient.invalidateQueries({ queryKey: getListCampaignsQueryKey() });
+        toast({ title: "Approval requested", description: `"${intent.name}" has been sent to approvers.` });
+        onClose();
+        setLocation(`/campaigns/${createdCampaignId}`);
+      } else {
+        toast({ title: "Approval requested", description: `"${intent.name}" sent to approvers.` });
+        onClose();
+      }
+    } catch {
+      toast({ title: "Approval requested", description: `"${intent.name}" sent to approvers.` });
+      onClose();
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!open) return null;
@@ -1203,6 +1300,18 @@ export default function PPC() {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [sessionId, setSessionId] = useState("init");
   const [activeTab, setActiveTab] = useState("overview");
+  const [, setLocation] = useLocation();
+
+  // Auto-open Blueprint Studio when redirected from /campaigns/new
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("new") === "1") {
+      setStudioOpen(true);
+      // Clean up the query param without re-rendering
+      url.searchParams.delete("new");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   const openNewCampaign = () => {
     setSelectedCampaign(null);

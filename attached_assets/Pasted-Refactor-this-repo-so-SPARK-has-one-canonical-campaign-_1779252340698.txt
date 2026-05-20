@@ -1,0 +1,161 @@
+Refactor this repo so SPARK has one canonical campaign workflow and a stronger domain model.
+
+Context:
+This repo currently has the right broad scaffold, but the core product model is still too shallow and fragmented.
+There are two competing flagship experiences:
+- `src/pages/app/NewCampaign.tsx`
+- `src/pages/app/channels/PPC.tsx`
+
+SPARK must have one canonical campaign design workflow.
+
+Goal:
+Refactor the app so SPARK behaves like an AI campaign operating system, not a set of disconnected demo screens.
+
+Critical product decisions:
+1. Keep `PPC.tsx` as the flagship direction, not `NewCampaign.tsx`.
+2. Replace the old generic campaign wizard model with a canonical Campaign Blueprint workflow.
+3. Make the backend/API/domain model support the product properly.
+4. Preserve prototype speed and mock data where needed, but improve structure substantially.
+
+Required architectural changes:
+
+1. Canonical campaign workflow
+Make the campaign flow:
+- Campaign Intent
+- Blueprint generation
+- Blueprint refinement
+- Provider draft readiness
+- Approval readiness
+- Campaign detail / execution state
+
+Do not keep two separate design paradigms.
+`NewCampaign.tsx` should either:
+- redirect into the new blueprint workflow
+or
+- be replaced by a simplified entry screen that launches the blueprint studio
+
+2. Domain model upgrade
+Refactor OpenAPI spec, generated types, and mock server routes to support:
+
+Campaign:
+- id
+- name
+- primaryObjective
+- secondaryObjectives[]
+- status
+- budget
+- dailyBudget
+- channels[]
+- targetAudience
+- productDescription
+- spendStyle
+- landingPage
+- geography
+- owner
+- healthScore
+- spend
+- leadsGenerated
+- blueprint
+- providerDrafts[]
+- approvalState
+- createdAt
+
+CampaignIntent:
+- campaignName
+- primaryObjective
+- secondaryObjectives[]
+- offer
+- targetAudience
+- geography
+- landingPage
+- budget
+- dailyBudget
+- spendStyle
+- urgency
+- optional guardrails
+
+CampaignBlueprint:
+Replace the current text-heavy structure with more structured sections:
+- strategicAngle
+- audienceStrategy
+- platformStrategy[]
+- keywordThemes[]
+- negativeKeywordThemes[]
+- adDirection
+- measurementPlan
+- trackingPlan
+- executionChecklist[]
+- approvalRequirements[]
+- risks[]
+- assumptions[]
+
+ProviderDraft:
+Add a provider-neutral concept that supports future Google Ads / Microsoft mappings:
+- provider
+- readinessScore
+- status
+- validationIssues[]
+- draftSummary
+- accountStatus
+- syncStatus
+
+3. Approval model
+Campaign approval should not just be a campaign status flip.
+Model:
+- approval readiness
+- required approver roles
+- approval requests linked to campaign and draft
+- risk level
+- pending blockers
+
+4. API changes
+Refactor:
+- `lib/api-spec/openapi.yaml`
+- generated API types
+- mock Express routes
+
+Add or improve endpoints for:
+- creating campaign intent
+- generating blueprint
+- updating blueprint sections
+- viewing provider draft readiness
+- requesting approval
+- listing approval blockers
+
+This is still a prototype, so logic can be mocked, but data shape must support the long-term product.
+
+5. Frontend workflow changes
+Refactor these pages:
+- `src/pages/app/NewCampaign.tsx`
+- `src/pages/app/channels/PPC.tsx`
+- `src/pages/app/CampaignDetail.tsx`
+
+Rules:
+- `PPC.tsx` should become the canonical Blueprint Studio
+- `NewCampaign.tsx` should no longer be a separate generic wizard
+- `CampaignDetail.tsx` should reflect blueprint + provider readiness + approval state
+
+6. Connected product behavior
+Make the workbenches feel connected to the campaign system.
+PPC should clearly connect to:
+- campaign blueprint
+- provider readiness
+- approval state
+
+Do not leave workbenches as isolated mock screens.
+
+7. Maintain prototype pragmatism
+You do not need real Google Ads integration.
+But the structure should clearly prepare for:
+- provider draft mapping
+- validation
+- approval routing
+- future sync
+
+Deliverables:
+- refactor the API contract
+- refactor the mock backend routes
+- refactor the campaign-related frontend pages
+- keep app runnable
+- preserve mock data where needed
+- prefer structural correctness over superficial polish

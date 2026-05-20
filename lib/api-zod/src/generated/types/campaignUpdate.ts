@@ -12,4 +12,8 @@ export interface CampaignUpdate {
   budget?: number;
   targetAudience?: string;
   productDescription?: string;
+  geography?: string;
+  landingPage?: string;
+  primaryObjective?: string;
+  secondaryObjectives?: string[];
 }

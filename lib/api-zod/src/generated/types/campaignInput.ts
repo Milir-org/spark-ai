@@ -9,6 +9,9 @@
 export interface CampaignInput {
   name: string;
   objective: string;
+  /** @nullable */
+  primaryObjective?: string | null;
+  secondaryObjectives?: string[];
   budget: number;
   /** @nullable */
   dailyBudget?: number | null;
@@ -21,4 +24,8 @@ export interface CampaignInput {
   productDescription?: string | null;
   /** @nullable */
   spendStyle?: string | null;
+  /** @nullable */
+  geography?: string | null;
+  /** @nullable */
+  landingPage?: string | null;
 }

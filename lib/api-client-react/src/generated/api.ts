@@ -25,6 +25,7 @@ import type {
   AiRecommendation,
   AnalyticsData,
   ApprovalAction,
+  ApprovalBlockersResponse,
   ApprovalRequest,
   Asset,
   AssetInput,
@@ -51,6 +52,7 @@ import type {
   Opportunity,
   PerformanceDataPoint,
   PpcWorkbenchData,
+  ProviderDraft,
   Report,
   ReportRequest,
   SegmentInput,
@@ -1115,6 +1117,160 @@ export const useSubmitCampaignForApproval = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getSubmitCampaignForApprovalMutationOptions(options));
     }
+
+export const getGetCampaignProviderDraftsUrl = (id: number,) => {
+
+
+
+
+  return `/api/campaigns/${id}/provider-drafts`
+}
+
+/**
+ * @summary Get provider draft readiness for a campaign
+ */
+export const getCampaignProviderDrafts = async (id: number, options?: RequestInit): Promise<ProviderDraft[]> => {
+
+  return customFetch<ProviderDraft[]>(getGetCampaignProviderDraftsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCampaignProviderDraftsQueryKey = (id: number,) => {
+    return [
+    `/api/campaigns/${id}/provider-drafts`
+    ] as const;
+    }
+
+
+export const getGetCampaignProviderDraftsQueryOptions = <TData = Awaited<ReturnType<typeof getCampaignProviderDrafts>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCampaignProviderDrafts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCampaignProviderDraftsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCampaignProviderDrafts>>> = ({ signal }) => getCampaignProviderDrafts(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCampaignProviderDrafts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCampaignProviderDraftsQueryResult = NonNullable<Awaited<ReturnType<typeof getCampaignProviderDrafts>>>
+export type GetCampaignProviderDraftsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get provider draft readiness for a campaign
+ */
+
+export function useGetCampaignProviderDrafts<TData = Awaited<ReturnType<typeof getCampaignProviderDrafts>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCampaignProviderDrafts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCampaignProviderDraftsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetCampaignApprovalBlockersUrl = (id: number,) => {
+
+
+
+
+  return `/api/campaigns/${id}/approval-blockers`
+}
+
+/**
+ * @summary Get approval blockers for a campaign
+ */
+export const getCampaignApprovalBlockers = async (id: number, options?: RequestInit): Promise<ApprovalBlockersResponse> => {
+
+  return customFetch<ApprovalBlockersResponse>(getGetCampaignApprovalBlockersUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCampaignApprovalBlockersQueryKey = (id: number,) => {
+    return [
+    `/api/campaigns/${id}/approval-blockers`
+    ] as const;
+    }
+
+
+export const getGetCampaignApprovalBlockersQueryOptions = <TData = Awaited<ReturnType<typeof getCampaignApprovalBlockers>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCampaignApprovalBlockers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCampaignApprovalBlockersQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCampaignApprovalBlockers>>> = ({ signal }) => getCampaignApprovalBlockers(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCampaignApprovalBlockers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCampaignApprovalBlockersQueryResult = NonNullable<Awaited<ReturnType<typeof getCampaignApprovalBlockers>>>
+export type GetCampaignApprovalBlockersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get approval blockers for a campaign
+ */
+
+export function useGetCampaignApprovalBlockers<TData = Awaited<ReturnType<typeof getCampaignApprovalBlockers>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCampaignApprovalBlockers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCampaignApprovalBlockersQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetPpcDataUrl = () => {
 

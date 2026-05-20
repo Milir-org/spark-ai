@@ -8,11 +8,15 @@
 import type { CampaignBlueprint } from './campaignBlueprint';
 import type { CampaignObjective } from './campaignObjective';
 import type { CampaignStatus } from './campaignStatus';
+import type { ProviderDraft } from './providerDraft';
 
 export interface Campaign {
   id: number;
   name: string;
   objective: CampaignObjective;
+  /** @nullable */
+  primaryObjective?: string | null;
+  secondaryObjectives?: string[];
   status: CampaignStatus;
   budget: number;
   /** @nullable */
@@ -31,11 +35,16 @@ export interface Campaign {
   /** @nullable */
   spendStyle?: string | null;
   /** @nullable */
+  geography?: string | null;
+  /** @nullable */
+  landingPage?: string | null;
+  /** @nullable */
   healthScore?: number | null;
   /** @nullable */
   leadsGenerated?: number | null;
   /** @nullable */
   spend?: number | null;
   blueprint?: CampaignBlueprint | null;
+  providerDrafts?: ProviderDraft[];
   createdAt: string;
 }

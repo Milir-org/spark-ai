@@ -5,10 +5,16 @@
  * SPARK AI Marketing Suite API
  * OpenAPI spec version: 0.1.0
  */
+import type { AdDirectionEntry } from './adDirectionEntry';
+import type { KeywordThemeEntry } from './keywordThemeEntry';
+import type { NegativeThemeEntry } from './negativeThemeEntry';
+import type { PlatformStrategyEntry } from './platformStrategyEntry';
 
 export interface CampaignBlueprint {
   id: number;
   campaignId: number;
+  /** @nullable */
+  strategicAngle?: string | null;
   strategySummary: string;
   audienceStrategy: string;
   budgetPlan: string;
@@ -16,6 +22,14 @@ export interface CampaignBlueprint {
   creativePlan: string;
   experimentPlan: string;
   measurementPlan: string;
+  /** @nullable */
+  trackingPlan?: string | null;
+  platformStrategy?: PlatformStrategyEntry[];
+  keywordThemes?: KeywordThemeEntry[];
+  negativeKeywordThemes?: NegativeThemeEntry[];
+  adDirection?: AdDirectionEntry | null;
   executionChecklist: string[];
   approvalRequirements?: string[];
+  risks?: string[];
+  assumptions?: string[];
 }

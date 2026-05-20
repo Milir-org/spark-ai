@@ -278,6 +278,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/Campaign"
 
+  /campaigns/{id}/provider-drafts:
+    get:
+      operationId: getCampaignProviderDrafts
+      tags: [campaigns]
+      summary: Get provider draft readiness for a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Provider drafts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProviderDraft"
+
+  /campaigns/{id}/approval-blockers:
+    get:
+      operationId: getCampaignApprovalBlockers
+      tags: [campaigns]
+      summary: Get approval blockers for a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Approval blockers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalBlockersResponse"
+
   # ── Channels ──────────────────────────────────────────────────────────
   /channels/ppc:
     get:
@@ -1009,6 +1049,12 @@ components:
         objective:
           type: string
           enum: [lead_generation, sales, awareness, website_traffic, retention, reactivation, event_promotion, product_launch]
+        primaryObjective:
+          type: ["string", "null"]
+        secondaryObjectives:
+          type: array
+          items:
+            type: string
         status:
           type: string
           enum: [draft, planning, awaiting_approval, ready_to_launch, active, optimising, paused, completed]
@@ -1036,6 +1082,10 @@ components:
           type: ["string", "null"]
         spendStyle:
           type: ["string", "null"]
+        geography:
+          type: ["string", "null"]
+        landingPage:
+          type: ["string", "null"]
         healthScore:
           type: ["integer", "null"]
         leadsGenerated:
@@ -1046,6 +1096,10 @@ components:
           anyOf:
             - $ref: "#/components/schemas/CampaignBlueprint"
             - type: "null"
+        providerDrafts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderDraft"
         createdAt:
           type: string
 
@@ -1057,6 +1111,12 @@ components:
           type: string
         objective:
           type: string
+        primaryObjective:
+          type: ["string", "null"]
+        secondaryObjectives:
+          type: array
+          items:
+            type: string
         budget:
           type: number
         dailyBudget:
@@ -1075,6 +1135,10 @@ components:
           type: ["string", "null"]
         spendStyle:
           type: ["string", "null"]
+        geography:
+          type: ["string", "null"]
+        landingPage:
+          type: ["string", "null"]
 
     CampaignUpdate:
       type: object
@@ -1089,6 +1153,16 @@ components:
           type: string
         productDescription:
           type: string
+        geography:
+          type: string
+        landingPage:
+          type: string
+        primaryObjective:
+          type: string
+        secondaryObjectives:
+          type: array
+          items:
+            type: string
 
     CampaignBlueprint:
       type: object
@@ -1098,6 +1172,8 @@ components:
           type: integer
         campaignId:
           type: integer
+        strategicAngle:
+          type: ["string", "null"]
         strategySummary:
           type: string
         audienceStrategy:
@@ -1112,6 +1188,24 @@ components:
           type: string
         measurementPlan:
           type: string
+        trackingPlan:
+          type: ["string", "null"]
+        platformStrategy:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformStrategyEntry"
+        keywordThemes:
+          type: array
+          items:
+            $ref: "#/components/schemas/KeywordThemeEntry"
+        negativeKeywordThemes:
+          type: array
+          items:
+            $ref: "#/components/schemas/NegativeThemeEntry"
+        adDirection:
+          anyOf:
+            - $ref: "#/components/schemas/AdDirectionEntry"
+            - type: "null"
         executionChecklist:
           type: array
           items:
@@ -1120,6 +1214,135 @@ components:
           type: array
           items:
             type: string
+        risks:
+          type: array
+          items:
+            type: string
+        assumptions:
+          type: array
+          items:
+            type: string
+
+    PlatformStrategyEntry:
+      type: object
+      required: [name, budgetPct, rationale, recommended]
+      properties:
+        name:
+          type: string
+        budgetPct:
+          type: number
+        rationale:
+          type: string
+        recommended:
+          type: boolean
+
+    KeywordThemeEntry:
+      type: object
+      required: [id, name, intent, keywords]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        intent:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        approved:
+          type: ["boolean", "null"]
+
+    NegativeThemeEntry:
+      type: object
+      required: [id, name, rationale, terms]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        rationale:
+          type: string
+        terms:
+          type: array
+          items:
+            type: string
+
+    AdDirectionEntry:
+      type: object
+      required: [angle, tone, headlines, descriptions]
+      properties:
+        angle:
+          type: string
+        tone:
+          type: string
+        headlines:
+          type: array
+          items:
+            type: string
+        descriptions:
+          type: array
+          items:
+            type: string
+
+    ProviderDraft:
+      type: object
+      required: [id, campaignId, provider, readinessScore, status]
+      properties:
+        id:
+          type: integer
+        campaignId:
+          type: integer
+        provider:
+          type: string
+          enum: [google_ads, microsoft_advertising]
+        readinessScore:
+          type: integer
+        status:
+          type: string
+          enum: [not_started, draft_ready, validation_failed, synced, live]
+        validationIssues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderValidationIssue"
+        draftSummary:
+          type: ["string", "null"]
+        accountStatus:
+          type: ["string", "null"]
+        syncStatus:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ProviderValidationIssue:
+      type: object
+      required: [field, severity, message]
+      properties:
+        field:
+          type: string
+        severity:
+          type: string
+          enum: [error, warning, info]
+        message:
+          type: string
+
+    ApprovalBlockersResponse:
+      type: object
+      required: [blockers, canSubmit]
+      properties:
+        blockers:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              label:
+                type: string
+              severity:
+                type: string
+        canSubmit:
+          type: boolean
 
     # ── Channel Workbenches ──
     PpcWorkbenchData:

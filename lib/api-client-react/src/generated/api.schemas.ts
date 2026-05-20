@@ -135,9 +135,41 @@ export const CampaignStatus = {
   completed: 'completed',
 } as const;
 
+export interface PlatformStrategyEntry {
+  name: string;
+  budgetPct: number;
+  rationale: string;
+  recommended: boolean;
+}
+
+export interface KeywordThemeEntry {
+  id: number;
+  name: string;
+  intent: string;
+  keywords: string[];
+  /** @nullable */
+  approved?: boolean | null;
+}
+
+export interface NegativeThemeEntry {
+  id: number;
+  name: string;
+  rationale: string;
+  terms: string[];
+}
+
+export interface AdDirectionEntry {
+  angle: string;
+  tone: string;
+  headlines: string[];
+  descriptions: string[];
+}
+
 export interface CampaignBlueprint {
   id: number;
   campaignId: number;
+  /** @nullable */
+  strategicAngle?: string | null;
   strategySummary: string;
   audienceStrategy: string;
   budgetPlan: string;
@@ -145,14 +177,75 @@ export interface CampaignBlueprint {
   creativePlan: string;
   experimentPlan: string;
   measurementPlan: string;
+  /** @nullable */
+  trackingPlan?: string | null;
+  platformStrategy?: PlatformStrategyEntry[];
+  keywordThemes?: KeywordThemeEntry[];
+  negativeKeywordThemes?: NegativeThemeEntry[];
+  adDirection?: AdDirectionEntry | null;
   executionChecklist: string[];
   approvalRequirements?: string[];
+  risks?: string[];
+  assumptions?: string[];
+}
+
+export type ProviderDraftProvider = typeof ProviderDraftProvider[keyof typeof ProviderDraftProvider];
+
+
+export const ProviderDraftProvider = {
+  google_ads: 'google_ads',
+  microsoft_advertising: 'microsoft_advertising',
+} as const;
+
+export type ProviderDraftStatus = typeof ProviderDraftStatus[keyof typeof ProviderDraftStatus];
+
+
+export const ProviderDraftStatus = {
+  not_started: 'not_started',
+  draft_ready: 'draft_ready',
+  validation_failed: 'validation_failed',
+  synced: 'synced',
+  live: 'live',
+} as const;
+
+export type ProviderValidationIssueSeverity = typeof ProviderValidationIssueSeverity[keyof typeof ProviderValidationIssueSeverity];
+
+
+export const ProviderValidationIssueSeverity = {
+  error: 'error',
+  warning: 'warning',
+  info: 'info',
+} as const;
+
+export interface ProviderValidationIssue {
+  field: string;
+  severity: ProviderValidationIssueSeverity;
+  message: string;
+}
+
+export interface ProviderDraft {
+  id: number;
+  campaignId: number;
+  provider: ProviderDraftProvider;
+  readinessScore: number;
+  status: ProviderDraftStatus;
+  validationIssues?: ProviderValidationIssue[];
+  /** @nullable */
+  draftSummary?: string | null;
+  /** @nullable */
+  accountStatus?: string | null;
+  /** @nullable */
+  syncStatus?: string | null;
+  createdAt?: string;
 }
 
 export interface Campaign {
   id: number;
   name: string;
   objective: CampaignObjective;
+  /** @nullable */
+  primaryObjective?: string | null;
+  secondaryObjectives?: string[];
   status: CampaignStatus;
   budget: number;
   /** @nullable */
@@ -171,18 +264,26 @@ export interface Campaign {
   /** @nullable */
   spendStyle?: string | null;
   /** @nullable */
+  geography?: string | null;
+  /** @nullable */
+  landingPage?: string | null;
+  /** @nullable */
   healthScore?: number | null;
   /** @nullable */
   leadsGenerated?: number | null;
   /** @nullable */
   spend?: number | null;
   blueprint?: CampaignBlueprint | null;
+  providerDrafts?: ProviderDraft[];
   createdAt: string;
 }
 
 export interface CampaignInput {
   name: string;
   objective: string;
+  /** @nullable */
+  primaryObjective?: string | null;
+  secondaryObjectives?: string[];
   budget: number;
   /** @nullable */
   dailyBudget?: number | null;
@@ -195,6 +296,10 @@ export interface CampaignInput {
   productDescription?: string | null;
   /** @nullable */
   spendStyle?: string | null;
+  /** @nullable */
+  geography?: string | null;
+  /** @nullable */
+  landingPage?: string | null;
 }
 
 export interface CampaignUpdate {
@@ -203,6 +308,21 @@ export interface CampaignUpdate {
   budget?: number;
   targetAudience?: string;
   productDescription?: string;
+  geography?: string;
+  landingPage?: string;
+  primaryObjective?: string;
+  secondaryObjectives?: string[];
+}
+
+export type ApprovalBlockersResponseBlockersItem = {
+  type?: string;
+  label?: string;
+  severity?: string;
+};
+
+export interface ApprovalBlockersResponse {
+  blockers: ApprovalBlockersResponseBlockersItem[];
+  canSubmit: boolean;
 }
 
 export interface PpcCampaignRow {
