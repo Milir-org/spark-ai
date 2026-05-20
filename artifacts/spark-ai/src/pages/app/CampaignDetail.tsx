@@ -6,26 +6,24 @@ import {
   getListCampaignsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, CheckCircle, Clock, SendHorizonal, AlertTriangle,
-  Target, MapPin, Globe, DollarSign, Zap, BarChart2, Shield,
-  Hash, TrendingUp, AlertCircle, Info,
+  Target, Globe, DollarSign, Zap, BarChart2, Shield,
+  Hash, TrendingUp, AlertCircle, Info, Sparkles, ChevronRight,
 } from "lucide-react";
 
-// ─── Status config ────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
-  draft:            { bg: "bg-muted/40",        text: "text-muted-foreground", dot: "bg-muted-foreground" },
-  planning:         { bg: "bg-blue-500/15",     text: "text-blue-300",         dot: "bg-blue-400" },
-  awaiting_approval:{ bg: "bg-amber-500/15",    text: "text-amber-300",        dot: "bg-amber-400" },
-  ready_to_launch:  { bg: "bg-emerald-500/15",  text: "text-emerald-300",      dot: "bg-emerald-400" },
-  active:           { bg: "bg-emerald-500/15",  text: "text-emerald-300",      dot: "bg-emerald-400" },
-  optimising:       { bg: "bg-primary/15",      text: "text-primary",          dot: "bg-primary" },
-  paused:           { bg: "bg-muted/40",        text: "text-muted-foreground", dot: "bg-muted-foreground" },
-  completed:        { bg: "bg-muted/20",        text: "text-muted-foreground/70", dot: "bg-muted-foreground/50" },
+  draft:             { bg: "bg-muted/30",        text: "text-muted-foreground", dot: "bg-muted-foreground/50" },
+  planning:          { bg: "bg-blue-500/10",      text: "text-blue-300",         dot: "bg-blue-400" },
+  awaiting_approval: { bg: "bg-amber-500/10",     text: "text-amber-300",        dot: "bg-amber-400" },
+  ready_to_launch:   { bg: "bg-emerald-500/10",   text: "text-emerald-300",      dot: "bg-emerald-400" },
+  active:            { bg: "bg-emerald-500/10",   text: "text-emerald-300",      dot: "bg-emerald-400" },
+  optimising:        { bg: "bg-primary/10",       text: "text-primary",          dot: "bg-primary" },
+  paused:            { bg: "bg-muted/30",         text: "text-muted-foreground", dot: "bg-muted-foreground/50" },
+  completed:         { bg: "bg-muted/20",         text: "text-muted-foreground/60", dot: "bg-muted-foreground/30" },
 };
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -33,77 +31,455 @@ const PROVIDER_LABELS: Record<string, string> = {
   microsoft_advertising: "Microsoft Advertising",
 };
 
-function StatusBadge({ status }: { status: string }) {
+const INTENT_COLORS: Record<string, string> = {
+  Brand:         "bg-blue-400/10 text-blue-300 border-blue-400/20",
+  "High Intent": "bg-emerald-400/10 text-emerald-300 border-emerald-400/20",
+  Product:       "bg-violet-400/10 text-violet-300 border-violet-400/20",
+  Competitor:    "bg-red-400/10 text-red-300 border-red-400/20",
+  Local:         "bg-cyan-400/10 text-cyan-300 border-cyan-400/20",
+  Informational: "bg-slate-400/10 text-slate-300 border-slate-400/20",
+};
+
+function StatusPill({ status }: { status: string }) {
   const s = STATUS_STYLES[status] ?? STATUS_STYLES.draft;
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
       {status.replace(/_/g, " ")}
     </span>
   );
 }
 
-function ReadinessGauge({ score, label }: { score: number; label: string }) {
-  const color = score >= 80 ? "text-emerald-400" : score >= 60 ? "text-amber-400" : "text-red-400";
-  const ring = score >= 80 ? "stroke-emerald-400" : score >= 60 ? "stroke-amber-400" : "stroke-red-400";
-  const r = 20;
+function RadialGauge({ score, label, size = 80 }: { score: number; label: string; size?: number }) {
+  const r = (size / 2) - 6;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
+  const strokeColor = score >= 80 ? "stroke-emerald-400" : score >= 60 ? "stroke-amber-400" : "stroke-red-400";
+  const textColor   = score >= 80 ? "text-emerald-400"  : score >= 60 ? "text-amber-400"  : "text-red-400";
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="relative w-16 h-16">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 52 52">
-          <circle cx="26" cy="26" r={r} fill="none" strokeWidth="4" className="stroke-muted/30" />
-          <circle cx="26" cy="26" r={r} fill="none" strokeWidth="4" className={ring}
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg className="w-full h-full -rotate-90" viewBox={`0 0 ${size} ${size}`}>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth="5" className="stroke-white/[0.06]" />
+          <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth="5" className={strokeColor}
             strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
         </svg>
-        <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${color}`}>{score}%</span>
+        <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${textColor}`}>{score}%</span>
       </div>
       <p className="text-xs text-muted-foreground text-center leading-tight">{label}</p>
     </div>
   );
 }
 
-function SectionCard({ label, icon: Icon, children }: { label: string; icon?: any; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/[0.06] flex items-center gap-2">
-        {Icon && <Icon size={13} className="text-primary/70" />}
-        <p className="text-[11px] font-semibold text-primary/80 uppercase tracking-widest">{label}</p>
+function SectionDivider() {
+  return <div className="w-full h-px bg-white/[0.05]" />;
+}
+
+// ─── Blueprint Canvas ─────────────────────────────────────────────────────────
+
+function BlueprintCanvas({ bp }: { bp: any }) {
+  if (!bp) return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-5">
+        <Sparkles size={20} className="text-muted-foreground/40" />
       </div>
-      <div className="p-5">{children}</div>
+      <p className="text-muted-foreground text-sm font-medium">No blueprint generated yet</p>
+      <p className="text-xs text-muted-foreground/50 mt-1.5 max-w-xs">Open the PPC Blueprint Studio to generate a campaign strategy.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-14">
+
+      {/* Strategic Angle */}
+      {bp.strategicAngle && (
+        <section>
+          <div className="flex items-center gap-2 mb-6">
+            <Sparkles size={13} className="text-primary" />
+            <p className="text-[11px] font-bold text-primary uppercase tracking-widest">Strategic Angle</p>
+          </div>
+          <p className="text-xl leading-relaxed text-foreground/85 font-light">
+            {bp.strategicAngle}
+          </p>
+        </section>
+      )}
+
+      <SectionDivider />
+
+      {/* Platform Strategy */}
+      {bp.platformStrategy?.length > 0 && (
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-7">Platform Strategy</p>
+          <div className="space-y-4">
+            {bp.platformStrategy.map((p: any) => (
+              <div key={p.name} className={`p-6 rounded-2xl border ${p.recommended ? "border-white/[0.08] bg-white/[0.015]" : "border-white/[0.04] opacity-60"}`}>
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <p className="font-semibold text-base">{p.name}</p>
+                      {p.recommended && (
+                        <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/[0.07]">
+                          Recommended
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{p.rationale}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-3xl font-bold">{p.budgetPct}%</p>
+                    <p className="text-xs text-muted-foreground">of budget</p>
+                  </div>
+                </div>
+                <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${p.recommended ? "bg-primary" : "bg-white/20"}`} style={{ width: `${p.budgetPct}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {bp.platformStrategy?.length > 0 && <SectionDivider />}
+
+      {/* Keyword Themes */}
+      {bp.keywordThemes?.length > 0 && (
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-7">Keyword Themes</p>
+          <div className="space-y-4">
+            {bp.keywordThemes.map((t: any) => {
+              const ic = INTENT_COLORS[t.intent] ?? INTENT_COLORS.Informational;
+              return (
+                <div key={t.id ?? t.name} className="p-5 rounded-2xl border border-white/[0.07] bg-white/[0.01]">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${ic}`}>{t.intent}</span>
+                    <span className="font-medium text-sm">{t.name}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(t.keywords ?? []).map((kw: string) => (
+                      <span key={kw} className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.05] text-foreground/65 font-mono">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {bp.keywordThemes?.length > 0 && bp.negativeKeywordThemes?.length > 0 && <SectionDivider />}
+
+      {/* Negative Keywords */}
+      {bp.negativeKeywordThemes?.length > 0 && (
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-7">Negative Keyword Themes</p>
+          <div className="space-y-3">
+            {bp.negativeKeywordThemes.map((t: any) => (
+              <div key={t.id ?? t.name} className="p-5 rounded-2xl border border-white/[0.06] bg-white/[0.01]">
+                <p className="font-medium text-sm mb-1.5">{t.name}</p>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{t.rationale}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(t.terms ?? []).map((term: string) => (
+                    <span key={term} className="text-[11px] px-2.5 py-1 rounded-full bg-red-400/[0.07] border border-red-400/15 text-red-400/70 font-mono">{term}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {bp.negativeKeywordThemes?.length > 0 && bp.adDirection && <SectionDivider />}
+
+      {/* Ad Direction */}
+      {bp.adDirection && (
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-7">Ad Direction</p>
+          <div className="space-y-8">
+            {bp.adDirection.angle && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Creative Angle</p>
+                <p className="text-base leading-relaxed text-foreground/85">{bp.adDirection.angle}</p>
+              </div>
+            )}
+            {bp.adDirection.tone && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tone</p>
+                <p className="text-sm text-foreground/70 leading-relaxed">{bp.adDirection.tone}</p>
+              </div>
+            )}
+            {bp.adDirection.headlines?.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Headlines</p>
+                <div className="space-y-2">
+                  {bp.adDirection.headlines.map((h: string, i: number) => (
+                    <div key={i} className="px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] font-medium text-sm">{h}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {bp.adDirection.descriptions?.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Descriptions</p>
+                <div className="space-y-2">
+                  {bp.adDirection.descriptions.map((d: string, i: number) => (
+                    <div key={i} className="px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-sm text-foreground/65 leading-relaxed">{d}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {bp.adDirection && (bp.trackingPlan || bp.executionChecklist?.length > 0) && <SectionDivider />}
+
+      {/* Tracking */}
+      {bp.trackingPlan && (
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-5">Tracking & Measurement</p>
+          <p className="text-sm text-foreground/75 leading-relaxed">{bp.trackingPlan}</p>
+        </section>
+      )}
+
+      {/* Execution checklist */}
+      {bp.executionChecklist?.length > 0 && (
+        <section>
+          <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-5">Execution Checklist</p>
+          <div className="space-y-3">
+            {bp.executionChecklist.map((item: string, i: number) => (
+              <div key={i} className="flex items-start gap-3">
+                <CheckCircle size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                <span className="text-sm leading-relaxed text-foreground/80">{item}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Risks + Assumptions */}
+      {(bp.risks?.length > 0 || bp.assumptions?.length > 0) && (
+        <>
+          <SectionDivider />
+          <div className="grid md:grid-cols-2 gap-8">
+            {bp.risks?.length > 0 && (
+              <section>
+                <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-5">Risks</p>
+                <div className="space-y-3">
+                  {bp.risks.map((r: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <AlertTriangle size={13} className="text-amber-400 mt-0.5 shrink-0" />
+                      <span className="text-sm text-foreground/75 leading-snug">{r}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+            {bp.assumptions?.length > 0 && (
+              <section>
+                <p className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-5">Assumptions</p>
+                <div className="space-y-3">
+                  {bp.assumptions.map((a: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <Info size={13} className="text-blue-400 mt-0.5 shrink-0" />
+                      <span className="text-sm text-foreground/75 leading-snug">{a}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        </>
+      )}
+
     </div>
   );
 }
 
-function KeywordThemeRow({ theme }: { theme: any }) {
-  const intentColors: Record<string, string> = {
-    Brand: "text-blue-400 bg-blue-400/10",
-    "High Intent": "text-emerald-400 bg-emerald-400/10",
-    Product: "text-violet-400 bg-violet-400/10",
-    Competitor: "text-red-400 bg-red-400/10",
-    Local: "text-cyan-400 bg-cyan-400/10",
-    Informational: "text-slate-400 bg-slate-400/10",
-  };
-  const ic = intentColors[theme.intent] ?? "text-muted-foreground bg-muted/20";
+// ─── Status Sidebar ───────────────────────────────────────────────────────────
+
+function StatusSidebar({ campaign, providerDrafts, bp, onSubmit, submitting }: {
+  campaign: any;
+  providerDrafts: any[];
+  bp: any;
+  onSubmit: () => void;
+  submitting: boolean;
+}) {
+  const canSubmit = campaign.status === "draft" || campaign.status === "planning";
+
+  const approvalSteps = [
+    { label: "Campaign drafted", done: true },
+    { label: "AI blueprint generated", done: !!bp },
+    { label: "Provider drafts ready", done: providerDrafts.some((d: any) => d.status === "draft_ready") },
+    { label: "Approval submitted", done: campaign.status !== "draft" && campaign.status !== "planning" },
+    { label: "Campaign approved", done: campaign.status === "ready_to_launch" || campaign.status === "active" || campaign.status === "optimising" },
+  ];
+
+  const doneCount = approvalSteps.filter((s) => s.done).length;
+  const pct = Math.round((doneCount / approvalSteps.length) * 100);
+
+  const kpis = [
+    { label: "Budget", value: `$${campaign.budget.toLocaleString()}`, sub: campaign.dailyBudget ? `$${campaign.dailyBudget.toLocaleString()}/day` : null },
+    { label: "Spend", value: campaign.spend != null ? `$${campaign.spend.toLocaleString()}` : "—", sub: campaign.spend && campaign.budget ? `${((campaign.spend / campaign.budget) * 100).toFixed(0)}% used` : null },
+    { label: "Leads", value: campaign.leadsGenerated != null ? campaign.leadsGenerated.toLocaleString() : "—", sub: null },
+    { label: "Health", value: campaign.healthScore != null ? `${campaign.healthScore}/100` : "—", sub: null },
+  ];
+
   return (
-    <div className="py-3 border-b border-white/[0.04] last:border-0">
-      <div className="flex items-center gap-2 mb-2">
-        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ic}`}>{theme.intent}</span>
-        <span className="text-sm font-medium">{theme.name}</span>
+    <div className="w-72 shrink-0 sticky top-[73px] max-h-[calc(100vh-73px)] flex flex-col overflow-y-auto">
+      <div className="p-6 space-y-8">
+
+        {/* Campaign meta */}
+        <div>
+          <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-4">Campaign Details</p>
+          <div className="space-y-2.5 text-sm">
+            {[
+              { label: "Objective", value: ((campaign.primaryObjective ?? campaign.objective) as string).replace(/_/g, " ") },
+              { label: "Channels", value: (campaign.channels as string[]).join(", ") },
+              { label: "Pacing", value: campaign.spendStyle ?? "balanced" },
+              campaign.geography ? { label: "Geography", value: campaign.geography } : null,
+              campaign.targetAudience ? { label: "Audience", value: campaign.targetAudience } : null,
+              campaign.landingPage ? { label: "Landing Page", value: null, mono: campaign.landingPage } : null,
+            ].filter(Boolean).map((row: any) => (
+              <div key={row.label} className="flex items-start gap-2 justify-between">
+                <span className="text-muted-foreground text-xs shrink-0 mt-0.5">{row.label}</span>
+                {row.mono ? (
+                  <span className="font-mono text-[11px] text-primary text-right truncate max-w-[140px]">{row.mono}</span>
+                ) : (
+                  <span className="font-medium text-xs text-right capitalize">{row.value}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* KPIs */}
+        <div>
+          <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-4">Metrics</p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {kpis.map((k) => (
+              <div key={k.label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3" data-testid={`kpi-${k.label.toLowerCase()}`}>
+                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">{k.label}</p>
+                <p className="text-xl font-bold leading-tight">{k.value}</p>
+                {k.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{k.sub}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Provider Readiness */}
+        {providerDrafts.length > 0 && (
+          <div>
+            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-5">Provider Readiness</p>
+            <div className="flex items-center justify-around gap-4">
+              {providerDrafts.map((draft: any) => (
+                <div key={draft.id} className="flex flex-col items-center">
+                  <RadialGauge score={draft.readinessScore} label={PROVIDER_LABELS[draft.provider] ?? draft.provider} size={72} />
+                  {draft.validationIssues?.length > 0 && (
+                    <span className="mt-1.5 text-[10px] text-amber-400/70">{draft.validationIssues.length} issue{draft.validationIssues.length > 1 ? "s" : ""}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Validation issues (compact) */}
+            {providerDrafts.some((d: any) => d.validationIssues?.length > 0) && (
+              <div className="mt-4 space-y-2">
+                {providerDrafts.flatMap((d: any) =>
+                  (d.validationIssues ?? []).slice(0, 3).map((issue: any, i: number) => (
+                    <div key={i} className={`flex items-start gap-2 text-[11px] p-2.5 rounded-lg ${
+                      issue.severity === "error" ? "bg-red-500/[0.08] text-red-300" :
+                      issue.severity === "warning" ? "bg-amber-500/[0.08] text-amber-300" :
+                      "bg-blue-500/[0.08] text-blue-300"
+                    }`}>
+                      {issue.severity === "error" ? <AlertCircle size={10} className="shrink-0 mt-0.5" /> :
+                       issue.severity === "warning" ? <AlertTriangle size={10} className="shrink-0 mt-0.5" /> :
+                       <Info size={10} className="shrink-0 mt-0.5" />}
+                      <span className="leading-snug">{issue.message}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Approval Timeline */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">Approval Progress</p>
+            <span className="text-xs font-bold text-muted-foreground">{pct}%</span>
+          </div>
+          <div className="h-1 bg-white/[0.06] rounded-full mb-5 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-400" : "bg-primary"}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div className="space-y-3">
+            {approvalSteps.map((step, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                {step.done ? (
+                  <CheckCircle size={13} className="text-emerald-400 shrink-0" />
+                ) : (
+                  <Clock size={13} className="text-muted-foreground/30 shrink-0" />
+                )}
+                <span className={`text-xs leading-snug ${step.done ? "text-foreground/70" : "text-muted-foreground/40"}`}>
+                  {step.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Approval Requirements from blueprint */}
+        {bp?.approvalRequirements?.length > 0 && (
+          <div>
+            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-4">Required Approvals</p>
+            <div className="space-y-2.5">
+              {bp.approvalRequirements.map((req: string, i: number) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-400/50 mt-1.5 shrink-0" />
+                  <span className="text-xs text-foreground/65 leading-snug">{req}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Secondary Goals */}
+        {campaign.secondaryObjectives?.length > 0 && (
+          <div>
+            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-3">Secondary Goals</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(campaign.secondaryObjectives as string[]).map((g) => (
+                <span key={g} className="text-[10px] px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">{g}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {(theme.keywords ?? []).map((kw: string) => (
-          <span key={kw} className="text-[11px] px-2 py-0.5 rounded bg-white/[0.04] text-muted-foreground font-mono">
-            {kw}
-          </span>
-        ))}
-      </div>
+
+      {/* Submit button */}
+      {canSubmit && (
+        <div className="mt-auto p-5 border-t border-white/[0.06]">
+          <button
+            onClick={onSubmit}
+            disabled={submitting}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="btn-submit-approval"
+          >
+            <SendHorizonal size={14} />
+            {submitting ? "Submitting…" : "Submit for Approval"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function CampaignDetail() {
   const { id } = useParams<{ id: string }>();
@@ -127,414 +503,88 @@ export default function CampaignDetail() {
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
-        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full" />)}
+        <Skeleton className="h-12 w-80" />
+        <div className="grid grid-cols-[1fr_288px] gap-8 mt-8">
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!campaign) {
-    return <div className="p-6"><p className="text-muted-foreground">Campaign not found.</p></div>;
+    return (
+      <div className="p-6">
+        <p className="text-muted-foreground text-sm">Campaign not found.</p>
+      </div>
+    );
   }
 
   const bp = campaign.blueprint as any;
   const providerDrafts = (campaign as any).providerDrafts ?? [];
-  const canSubmit = campaign.status === "draft" || campaign.status === "planning";
-
-  // KPIs
-  const kpis = [
-    { label: "Budget", value: `$${campaign.budget.toLocaleString()}`, sub: campaign.dailyBudget ? `$${campaign.dailyBudget.toLocaleString()}/day` : null },
-    { label: "Spend", value: campaign.spend != null ? `$${campaign.spend.toLocaleString()}` : "—", sub: campaign.spend && campaign.budget ? `${((campaign.spend / campaign.budget) * 100).toFixed(0)}% used` : null },
-    { label: "Leads", value: campaign.leadsGenerated != null ? campaign.leadsGenerated.toLocaleString() : "—", sub: null },
-    { label: "Health", value: campaign.healthScore != null ? `${campaign.healthScore}/100` : "—", sub: campaign.healthScore ? (campaign.healthScore >= 80 ? "Good" : campaign.healthScore >= 60 ? "Fair" : "At risk") : null },
-  ];
 
   return (
     <div className="min-h-full bg-[#0b0d14]">
-      {/* ── Header ─── */}
-      <div className="sticky top-0 z-10 bg-[#0b0d14]/95 backdrop-blur border-b border-white/[0.06] px-6 py-4">
-        <div className="flex items-center gap-3">
+
+      {/* ── Sticky Header ── */}
+      <div className="sticky top-0 z-10 bg-[#0b0d14]/95 backdrop-blur border-b border-white/[0.06]">
+        <div className="px-6 py-4 flex items-center gap-3">
           <button
             onClick={() => setLocation("/campaigns")}
-            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors"
             data-testid="btn-back"
           >
             <ArrowLeft size={16} />
           </button>
+
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-lg font-bold truncate" data-testid="heading-campaign-name">{campaign.name}</h1>
-              <StatusBadge status={campaign.status} />
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-lg font-bold truncate" data-testid="heading-campaign-name">
+                {campaign.name}
+              </h1>
+              <StatusPill status={campaign.status} />
             </div>
-            <p className="text-muted-foreground text-xs mt-0.5 capitalize">
+            <p className="text-xs text-muted-foreground mt-0.5 capitalize">
               {((campaign as any).primaryObjective ?? campaign.objective).replace(/_/g, " ")}
               {(campaign as any).geography ? ` · ${(campaign as any).geography}` : ""}
-              {" · "}${ (campaign.budget / 1000).toFixed(0)}k budget
+              {" · "}${(campaign.budget / 1000).toFixed(0)}k budget
             </p>
           </div>
-          {canSubmit && (
-            <Button
-              onClick={() => submitApproval.mutate({ id: numId })}
-              disabled={submitApproval.isPending}
-              size="sm"
-              className="gap-2 bg-primary hover:bg-primary/90"
-              data-testid="btn-submit-approval"
-            >
-              <SendHorizonal size={13} /> Submit for Approval
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* ── KPI Strip ─── */}
-      <div className="px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-        {kpis.map((k) => (
-          <div key={k.label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4" data-testid={`kpi-${k.label.toLowerCase()}`}>
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">{k.label}</p>
-            <p className="text-2xl font-bold">{k.value}</p>
-            {k.sub && <p className="text-[11px] text-muted-foreground mt-0.5">{k.sub}</p>}
-          </div>
-        ))}
-      </div>
+      {/* ── Two-Column Body ── */}
+      <div className="flex gap-0">
+        {/* Main canvas */}
+        <div className="flex-1 min-w-0 px-8 py-10">
+          <BlueprintCanvas bp={bp} />
 
-      {/* ── Tabs ─── */}
-      <div className="px-6 pb-8">
-        <Tabs defaultValue={bp ? "blueprint" : "overview"}>
-          <TabsList className="bg-white/[0.03] border border-white/[0.06] mb-5">
-            <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
-            <TabsTrigger value="blueprint" data-testid="tab-blueprint">Blueprint</TabsTrigger>
-            <TabsTrigger value="providers" data-testid="tab-providers">Provider Readiness</TabsTrigger>
-            <TabsTrigger value="approval" data-testid="tab-approval">Approval</TabsTrigger>
-          </TabsList>
-
-          {/* ── Overview ── */}
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <SectionCard label="Campaign Details" icon={Target}>
-                <div className="space-y-3 text-sm">
-                  {[
-                    { label: "Objective", value: ((campaign as any).primaryObjective ?? campaign.objective).replace(/_/g, " ") },
-                    { label: "Start", value: campaign.startDate },
-                    { label: "End", value: campaign.endDate },
-                    { label: "Channels", value: (campaign.channels as string[]).join(", ") },
-                    { label: "Spend Style", value: campaign.spendStyle ?? "balanced" },
-                    { label: "Owner", value: (campaign as any).ownerName ?? "—" },
-                  ].map((row) => (
-                    <div key={row.label} className="flex justify-between gap-3">
-                      <span className="text-muted-foreground shrink-0">{row.label}</span>
-                      <span className="font-medium text-right capitalize">{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </SectionCard>
-
-              <SectionCard label="Targeting & Product" icon={MapPin}>
-                <div className="space-y-4 text-sm">
-                  {(campaign as any).geography && (
-                    <div className="flex items-start gap-2">
-                      <Globe size={13} className="text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-muted-foreground text-[11px] mb-0.5">Geography</p>
-                        <p className="font-medium">{(campaign as any).geography}</p>
-                      </div>
-                    </div>
-                  )}
-                  {campaign.targetAudience && (
-                    <div>
-                      <p className="text-muted-foreground text-[11px] mb-0.5">Target Audience</p>
-                      <p className="leading-relaxed">{campaign.targetAudience}</p>
-                    </div>
-                  )}
-                  {campaign.productDescription && (
-                    <div>
-                      <p className="text-muted-foreground text-[11px] mb-0.5">Product</p>
-                      <p className="leading-relaxed">{campaign.productDescription}</p>
-                    </div>
-                  )}
-                  {(campaign as any).landingPage && (
-                    <div>
-                      <p className="text-muted-foreground text-[11px] mb-0.5">Landing Page</p>
-                      <p className="font-mono text-xs text-primary">{(campaign as any).landingPage}</p>
-                    </div>
-                  )}
-                  {(campaign as any).secondaryObjectives?.length > 0 && (
-                    <div>
-                      <p className="text-muted-foreground text-[11px] mb-1.5">Secondary Goals</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {((campaign as any).secondaryObjectives as string[]).map((g) => (
-                          <span key={g} className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">{g}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </SectionCard>
+          {!bp && (
+            <div className="mt-10 text-center">
+              <button
+                onClick={() => setLocation("/channels/ppc?new=1")}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-primary/25 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors"
+              >
+                <Sparkles size={14} /> Open Blueprint Studio
+              </button>
             </div>
-          </TabsContent>
+          )}
+        </div>
 
-          {/* ── Blueprint ── */}
-          <TabsContent value="blueprint" className="space-y-4">
-            {!bp ? (
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] py-16 text-center">
-                <p className="text-muted-foreground text-sm">No blueprint yet — use the PPC Blueprint Studio to generate one.</p>
-                <Button variant="outline" size="sm" className="mt-4" onClick={() => setLocation("/channels/ppc?new=1")}>
-                  Open Blueprint Studio
-                </Button>
-              </div>
-            ) : (
-              <>
-                {bp.strategicAngle && (
-                  <div className="rounded-xl border border-primary/20 bg-primary/[0.05] p-5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Zap size={14} className="text-primary" />
-                      <p className="text-[11px] font-semibold text-primary uppercase tracking-widest">Strategic Angle</p>
-                    </div>
-                    <p className="text-sm leading-relaxed text-foreground/90">{bp.strategicAngle}</p>
-                  </div>
-                )}
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  {[
-                    { label: "Strategy Summary", icon: Target, value: bp.strategySummary },
-                    { label: "Audience Strategy", icon: Target, value: bp.audienceStrategy },
-                    { label: "Budget Plan", icon: DollarSign, value: bp.budgetPlan },
-                    { label: "Channel Plan", icon: BarChart2, value: bp.channelPlan },
-                    { label: "Creative Plan", icon: TrendingUp, value: bp.creativePlan },
-                    { label: "Measurement Plan", icon: BarChart2, value: bp.measurementPlan },
-                  ].map((section) => section.value ? (
-                    <SectionCard key={section.label} label={section.label} icon={section.icon}>
-                      <p className="text-sm leading-relaxed text-foreground/80">{section.value}</p>
-                    </SectionCard>
-                  ) : null)}
-                </div>
-
-                {bp.trackingPlan && (
-                  <SectionCard label="Tracking Plan" icon={Shield}>
-                    <p className="text-sm leading-relaxed text-foreground/80">{bp.trackingPlan}</p>
-                  </SectionCard>
-                )}
-
-                {/* Platform strategy */}
-                {bp.platformStrategy?.length > 0 && (
-                  <SectionCard label="Platform Strategy" icon={Globe}>
-                    <div className="space-y-3">
-                      {bp.platformStrategy.map((p: any) => (
-                        <div key={p.name} className="flex items-start gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium">{p.name}</span>
-                              {p.recommended && <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">Recommended</span>}
-                            </div>
-                            <p className="text-xs text-muted-foreground leading-relaxed">{p.rationale}</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-lg font-bold text-primary">{p.budgetPct}%</p>
-                            <p className="text-[10px] text-muted-foreground">of budget</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </SectionCard>
-                )}
-
-                {/* Keyword themes */}
-                {bp.keywordThemes?.length > 0 && (
-                  <SectionCard label="Keyword Themes" icon={Hash}>
-                    {bp.keywordThemes.map((t: any) => <KeywordThemeRow key={t.id} theme={t} />)}
-                  </SectionCard>
-                )}
-
-                {/* Negative themes */}
-                {bp.negativeKeywordThemes?.length > 0 && (
-                  <SectionCard label="Negative Keyword Themes" icon={Shield}>
-                    <div className="space-y-3">
-                      {bp.negativeKeywordThemes.map((t: any) => (
-                        <div key={t.id} className="py-2 border-b border-white/[0.04] last:border-0">
-                          <p className="text-sm font-medium mb-1">{t.name}</p>
-                          <p className="text-xs text-muted-foreground mb-2">{t.rationale}</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {(t.terms ?? []).map((term: string) => (
-                              <span key={term} className="text-[11px] px-2 py-0.5 rounded bg-red-400/10 text-red-400 font-mono">{term}</span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </SectionCard>
-                )}
-
-                {/* Ad direction */}
-                {bp.adDirection && (
-                  <SectionCard label="Ad Direction" icon={TrendingUp}>
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">Strategic Angle</p>
-                        <p className="text-sm leading-relaxed">{bp.adDirection.angle}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">Tone</p>
-                        <p className="text-sm">{bp.adDirection.tone}</p>
-                      </div>
-                      {bp.adDirection.headlines?.length > 0 && (
-                        <div>
-                          <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">Headlines</p>
-                          <div className="space-y-1.5">
-                            {bp.adDirection.headlines.map((h: string, i: number) => (
-                              <div key={i} className="text-sm px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] font-medium">{h}</div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {bp.adDirection.descriptions?.length > 0 && (
-                        <div>
-                          <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">Descriptions</p>
-                          <div className="space-y-1.5">
-                            {bp.adDirection.descriptions.map((d: string, i: number) => (
-                              <div key={i} className="text-sm px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-foreground/80">{d}</div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </SectionCard>
-                )}
-
-                {/* Execution checklist */}
-                {bp.executionChecklist?.length > 0 && (
-                  <SectionCard label="Execution Checklist" icon={CheckCircle}>
-                    <div className="space-y-2">
-                      {bp.executionChecklist.map((item: string, i: number) => (
-                        <div key={i} className="flex items-start gap-2.5 text-sm">
-                          <CheckCircle size={14} className="text-emerald-400 mt-0.5 shrink-0" />
-                          <span className="leading-snug">{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </SectionCard>
-                )}
-
-                {/* Risks + Assumptions */}
-                {(bp.risks?.length > 0 || bp.assumptions?.length > 0) && (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {bp.risks?.length > 0 && (
-                      <SectionCard label="Risks" icon={AlertTriangle}>
-                        <div className="space-y-2">
-                          {bp.risks.map((r: string, i: number) => (
-                            <div key={i} className="flex items-start gap-2 text-sm">
-                              <AlertTriangle size={13} className="text-amber-400 mt-0.5 shrink-0" />
-                              <span className="text-foreground/80 leading-snug">{r}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </SectionCard>
-                    )}
-                    {bp.assumptions?.length > 0 && (
-                      <SectionCard label="Assumptions" icon={Info}>
-                        <div className="space-y-2">
-                          {bp.assumptions.map((a: string, i: number) => (
-                            <div key={i} className="flex items-start gap-2 text-sm">
-                              <Info size={13} className="text-blue-400 mt-0.5 shrink-0" />
-                              <span className="text-foreground/80 leading-snug">{a}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </SectionCard>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </TabsContent>
-
-          {/* ── Provider Readiness ── */}
-          <TabsContent value="providers" className="space-y-4">
-            {providerDrafts.length === 0 ? (
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] py-16 text-center">
-                <p className="text-muted-foreground text-sm">Provider draft readiness is generated after blueprint creation.</p>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {providerDrafts.map((draft: any) => (
-                  <div key={draft.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-                    <div className="flex items-start justify-between mb-5">
-                      <div>
-                        <p className="font-semibold text-sm">{PROVIDER_LABELS[draft.provider] ?? draft.provider}</p>
-                        <p className="text-[11px] text-muted-foreground capitalize mt-0.5">{draft.syncStatus?.replace(/_/g, " ") ?? "Not synced"}</p>
-                      </div>
-                      <ReadinessGauge score={draft.readinessScore} label="Readiness" />
-                    </div>
-
-                    {draft.draftSummary && (
-                      <p className="text-xs text-foreground/70 leading-relaxed mb-4">{draft.draftSummary}</p>
-                    )}
-
-                    {draft.validationIssues?.length > 0 && (
-                      <div className="space-y-2">
-                        {draft.validationIssues.map((issue: any, i: number) => (
-                          <div key={i} className={`flex items-start gap-2 text-xs rounded-lg p-2.5 ${
-                            issue.severity === "error" ? "bg-red-500/10 text-red-300" :
-                            issue.severity === "warning" ? "bg-amber-500/10 text-amber-300" :
-                            "bg-blue-500/10 text-blue-300"
-                          }`}>
-                            {issue.severity === "error" ? <AlertCircle size={12} className="shrink-0 mt-0.5" /> :
-                             issue.severity === "warning" ? <AlertTriangle size={12} className="shrink-0 mt-0.5" /> :
-                             <Info size={12} className="shrink-0 mt-0.5" />}
-                            <span>{issue.message}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {draft.validationIssues?.length === 0 && (
-                      <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-400/10 rounded-lg p-2.5">
-                        <CheckCircle size={12} className="shrink-0" />
-                        <span>All validation checks passed</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* ── Approval ── */}
-          <TabsContent value="approval" className="space-y-4">
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
-              <div className="space-y-4">
-                {[
-                  { label: "Campaign drafted", done: true },
-                  { label: "AI blueprint generated", done: !!bp },
-                  { label: "Provider drafts ready", done: providerDrafts.some((d: any) => d.status === "draft_ready") },
-                  { label: "Budget approval requested", done: campaign.status !== "draft" && campaign.status !== "planning" },
-                  { label: "Creative assets approved", done: false },
-                  { label: "Campaign approved", done: campaign.status === "ready_to_launch" || campaign.status === "active" },
-                  { label: "Campaign launched", done: campaign.status === "active" || campaign.status === "optimising" },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    {item.done ? (
-                      <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                    ) : (
-                      <Clock size={16} className="text-muted-foreground/40 shrink-0" />
-                    )}
-                    <span className={`text-sm ${item.done ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {bp?.approvalRequirements?.length > 0 && (
-              <SectionCard label="Required Approvals" icon={Shield}>
-                <div className="space-y-2">
-                  {bp.approvalRequirements.map((req: string, i: number) => (
-                    <div key={i} className="flex items-center gap-2.5 text-sm">
-                      <span className="w-2 h-2 rounded-full bg-amber-400/60 shrink-0" />
-                      <span className="text-foreground/80">{req}</span>
-                    </div>
-                  ))}
-                </div>
-              </SectionCard>
-            )}
-          </TabsContent>
-        </Tabs>
+        {/* Status sidebar */}
+        <div className="border-l border-white/[0.06] bg-[#0c0e17]">
+          <StatusSidebar
+            campaign={campaign}
+            providerDrafts={providerDrafts}
+            bp={bp}
+            onSubmit={() => submitApproval.mutate({ id: numId })}
+            submitting={submitApproval.isPending}
+          />
+        </div>
       </div>
     </div>
   );

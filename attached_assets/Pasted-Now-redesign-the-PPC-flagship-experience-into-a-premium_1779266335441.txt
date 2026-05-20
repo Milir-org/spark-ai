@@ -1,0 +1,107 @@
+Now redesign the PPC flagship experience into a premium AI-native Blueprint Studio.
+
+Context:
+The repo structure is improving, but the flagship UX still feels too much like a conventional SaaS dashboard or enterprise admin system.
+We want a modern, intuitive, spacious product feel.
+
+Goal:
+Make `src/pages/app/channels/PPC.tsx` and related campaign surfaces feel like a new-age AI campaign design environment.
+
+Emotional goal:
+The user should feel:
+- guided
+- calm
+- strategic
+- in control
+- impressed by product intelligence
+
+The user should NOT feel:
+- trapped in a form
+- overloaded with small controls
+- like they are using AWS
+- like they need certification to launch a campaign
+
+Critical design direction:
+Do not build a form wizard.
+Build a Blueprint Studio.
+
+Required UX model:
+1. User enters or edits campaign intent
+2. SPARK generates a strategic campaign blueprint
+3. The main canvas shows editable blueprint sections
+4. The right rail shows readiness, provider constraints, risks, and AI suggestions
+5. Review feels like campaign design, not checklist administration
+
+Required sections in the studio:
+- Campaign Intent
+- Strategic Angle
+- Platform Strategy
+- Keyword Themes
+- Negative Keyword Themes
+- Budget & Pacing
+- Ad Direction
+- Tracking & Measurement
+- Provider Draft Readiness
+- Approval Readiness
+
+Important:
+The main canvas should contain the real product value.
+Do not keep AI as a side helper only.
+AI output must be central to the main workspace.
+
+Visual rules:
+- larger type
+- more whitespace
+- fewer tiny controls
+- fewer borders
+- larger sections
+- stronger visual hierarchy
+- less card-grid repetition
+- less dashboard-template energy
+- less small-font density
+- more editorial / product-design feel
+
+UI constraints:
+- no tiny step labels as the main navigation pattern
+- no standard cramped wizard body
+- no “form first, intelligence second” layout
+- avoid default tab-and-card overload
+- one primary action per major state
+- advanced settings behind disclosure
+- helper text short and readable
+
+Content behavior:
+- support one primary objective
+- support multiple secondary objectives
+- clearly explain that primary drives the strategy
+- secondary influences recommendations only
+
+Provider-aware UX:
+Add a provider draft readiness area that visually shows:
+- Google draft readiness
+- Microsoft draft readiness
+- account connection state
+- validation blockers
+- what is still missing before approval
+
+Review state:
+The final state should feel like:
+- a campaign blueprint summary
+- a provider readiness summary
+- an approval readiness summary
+
+Not just:
+- a score
+- a checklist
+- a submit button
+
+Campaign detail alignment:
+Make sure `CampaignDetail.tsx` visually matches this new model.
+Campaign detail should feel like a control room, not a record with tabs.
+
+Deliverables:
+- redesign `PPC.tsx`
+- adjust `CampaignDetail.tsx` where needed
+- improve typography, spacing, and layout hierarchy
+- make the product feel premium and AI-native
+- keep prototype behavior acceptable, but make the experience coherent
