@@ -1,73 +1,92 @@
-import { useState, useEffect, useCallback } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useState, useCallback } from "react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
-  MonitorPlay, Plus, CheckCircle, XCircle, AlertCircle, AlertTriangle,
-  Loader2, ChevronRight, ChevronLeft, Search, Target, DollarSign,
-  Zap, Shield, FileText, MoreHorizontal, Edit, Eye, Brain, Lightbulb,
-  Sparkles, TrendingUp, ChevronDown, Download, Rocket, ThumbsUp,
-  ThumbsDown, Wand2, ArrowRight, Circle, X, ArrowUpRight,
+  Plus, CheckCircle, XCircle, AlertCircle, AlertTriangle, Loader2,
+  ChevronRight, ChevronLeft, Brain, Sparkles, Lightbulb, FileText,
+  Edit, Eye, Zap, X, ArrowRight, ThumbsUp, ThumbsDown, Globe, Hash,
+  Shield, DollarSign, Target, Wand2, BarChart2, MonitorPlay, Circle,
+  Check, Download, TrendingUp,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type CampaignStatus = "draft" | "data_check" | "approval" | "live" | "optimising" | "paused";
-type Platform = "Google Ads" | "Microsoft Advertising" | "Baidu" | "Naver" | "Yahoo Japan";
-type PrimaryGoal = "leads" | "sales" | "bookings" | "traffic" | "brand_protection" | "competitor_conquest";
-type WizardMode = "create" | "edit";
+type Platform = "Google Ads" | "Microsoft Advertising" | "Baidu" | "Naver";
+type CampaignStatus = "draft" | "blueprint" | "approval" | "live" | "optimising" | "paused" | "data_check";
+
+interface KeywordTheme {
+  id: number;
+  name: string;
+  intent: "Brand" | "High Intent" | "Product" | "Competitor" | "Local" | "Informational";
+  keywords: string[];
+  approved: boolean | null;
+}
+
+interface NegativeTheme {
+  id: number;
+  name: string;
+  rationale: string;
+  terms: string[];
+}
+
+interface GeneratedBlueprint {
+  strategicAngle: string;
+  platforms: { name: Platform; budgetPct: number; rationale: string; recommended: boolean }[];
+  keywordThemes: KeywordTheme[];
+  negativeThemes: NegativeTheme[];
+  adDirection: { angle: string; tone: string; headlines: string[]; descriptions: string[] };
+  conversionEvent: string;
+  trackingNotes: string;
+  providerReadiness: { google: number; bing: number };
+}
+
+interface CampaignIntent {
+  name: string;
+  primaryGoal: string;
+  secondaryGoals: string[];
+  urgency: string;
+  offer: string;
+  geography: string;
+  audience: string;
+  landingPage: string;
+  totalBudget: string;
+  maxCpl: string;
+}
 
 interface Campaign {
-  id: number; name: string; platforms: Platform[]; goal: PrimaryGoal;
-  status: CampaignStatus; budget: number; spend: number; conversions: number;
-  cpl: number; trackingStatus: "ok" | "warning" | "error";
-  approvalStatus: "approved" | "pending" | "not_required" | "rejected";
-  owner: string; sparkRec?: string;
-}
-
-interface SuggestedKeyword {
-  id: number; term: string;
-  group: "Brand" | "High Intent" | "Product" | "Local" | "Competitor" | "Informational";
-  matchType: "Exact" | "Phrase" | "Broad"; cpcRange: string;
-  competition: "Low" | "Medium" | "High"; accepted: boolean | null;
-}
-
-interface CampaignForm {
-  name: string; primaryGoal: string; urgency: string; maxCpl: string; maxDaily: string;
-  product: string; offer: string; geography: string; audience: string; landingPage: string;
-  platforms: Platform[]; totalBudget: string; budgetStyle: string;
-  searchIntent: string; brandKeywords: string; serviceKeywords: string;
-  negativeKeywords: string; acceptedKeywords: SuggestedKeyword[];
-  headline1: string; headline2: string; headline3: string;
-  desc1: string; desc2: string; ga4Event: string; owner: string;
+  id: number; name: string; platforms: Platform[]; status: CampaignStatus;
+  budget: number; spend: number; conversions: number; cpl: number;
+  trackingStatus: "ok" | "warning" | "error"; approvalStatus: "approved" | "pending" | "not_required";
+  owner: string; sparkRec?: string; blueprintReady?: boolean;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const GOAL_OPTIONS = [
+const PRIMARY_GOALS = [
   { value: "leads", label: "Generate Leads", desc: "Capture contacts from interested prospects" },
-  { value: "sales", label: "Drive Sales", desc: "Direct product or subscription purchase" },
-  { value: "bookings", label: "Book Appointments", desc: "Demo, call, or in-person booking" },
-  { value: "traffic", label: "Website Traffic", desc: "Awareness over conversion volume" },
+  { value: "sales", label: "Drive Sales", desc: "Direct purchase or subscription" },
+  { value: "bookings", label: "Book Appointments", desc: "Demo, call, or in-person visit" },
+  { value: "traffic", label: "Website Traffic", desc: "Awareness and top-of-funnel reach" },
   { value: "brand_protection", label: "Brand Protection", desc: "Own your branded search terms" },
-  { value: "competitor_conquest", label: "Competitor Conquest", desc: "Appear when users search for rivals" },
+  { value: "competitor_conquest", label: "Competitor Conquest", desc: "Appear on rival brand searches" },
 ];
 
-const GOAL_LABELS: Record<string, string> = Object.fromEntries(GOAL_OPTIONS.map((g) => [g.value, g.label]));
+const SECONDARY_GOALS = [
+  "Reduce CPL", "Improve lead quality", "Expand geography", "Test keyword clusters",
+  "Improve CTR", "Increase branded coverage", "Reduce wasted spend", "Improve conversion rate",
+];
 
-const PLATFORM_STATUS: Record<Platform, "connected" | "disconnected" | "coming_soon"> = {
-  "Google Ads": "connected", "Microsoft Advertising": "connected",
-  "Baidu": "disconnected", "Naver": "disconnected", "Yahoo Japan": "coming_soon",
+const GOAL_LABELS: Record<string, string> = Object.fromEntries(PRIMARY_GOALS.map((g) => [g.value, g.label]));
+
+const PLATFORM_CONN: Record<Platform, boolean> = {
+  "Google Ads": true, "Microsoft Advertising": true, "Baidu": false, "Naver": false,
 };
 
 const STATUS_CONFIG: Record<CampaignStatus, { label: string; color: string }> = {
   draft: { label: "Draft", color: "text-muted-foreground" },
+  blueprint: { label: "Blueprint", color: "text-primary" },
   data_check: { label: "Data Check", color: "text-amber-400" },
   approval: { label: "Awaiting Approval", color: "text-orange-400" },
   live: { label: "Live", color: "text-green-400" },
@@ -75,544 +94,730 @@ const STATUS_CONFIG: Record<CampaignStatus, { label: string; color: string }> = 
   paused: { label: "Paused", color: "text-muted-foreground" },
 };
 
-const GROUP_STYLES: Record<string, string> = {
-  Brand: "text-blue-300", "High Intent": "text-green-300", Product: "text-primary",
-  Local: "text-cyan-300", Competitor: "text-red-300", Informational: "text-muted-foreground",
+const INTENT_DOT: Record<string, string> = {
+  Brand: "bg-blue-400", "High Intent": "bg-green-400", Product: "bg-violet-400",
+  Competitor: "bg-red-400", Local: "bg-cyan-400", Informational: "bg-gray-400",
 };
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Mock data ────────────────────────────────────────────────────────────────
 
 const MOCK_CAMPAIGNS: Campaign[] = [
-  { id: 1, name: "Brand Search — APAC Q2", platforms: ["Google Ads", "Microsoft Advertising"], goal: "leads", status: "live", budget: 15000, spend: 12400, conversions: 312, cpl: 39.74, trackingStatus: "ok", approvalStatus: "approved", owner: "Alex Chen", sparkRec: "Raise bids on top 3 brand terms — ROAS 6.1×" },
-  { id: 2, name: "Non-Brand — Singapore SMEs", platforms: ["Google Ads"], goal: "leads", status: "optimising", budget: 22000, spend: 18900, conversions: 247, cpl: 76.52, trackingStatus: "ok", approvalStatus: "approved", owner: "Sarah Park", sparkRec: "Add 14 negatives → cut ~$1,840 wasted spend" },
-  { id: 3, name: "Competitor Conquest — SEMrush", platforms: ["Google Ads"], goal: "competitor_conquest", status: "live", budget: 9000, spend: 8200, conversions: 58, cpl: 141.38, trackingStatus: "warning", approvalStatus: "approved", owner: "Alex Chen", sparkRec: "Pause low-conv. ad group — CPA 2× target" },
-  { id: 4, name: "Enterprise Lead Gen", platforms: ["Google Ads", "Microsoft Advertising"], goal: "leads", status: "approval", budget: 18000, spend: 0, conversions: 0, cpl: 0, trackingStatus: "warning", approvalStatus: "pending", owner: "Sarah Park" },
-  { id: 5, name: "Baidu China Expansion", platforms: ["Baidu"], goal: "brand_protection", status: "data_check", budget: 12000, spend: 0, conversions: 0, cpl: 0, trackingStatus: "error", approvalStatus: "not_required", owner: "Priya Sharma" },
+  { id: 1, name: "Brand Search — APAC Q2", platforms: ["Google Ads", "Microsoft Advertising"], status: "live", budget: 15000, spend: 12400, conversions: 312, cpl: 39.74, trackingStatus: "ok", approvalStatus: "approved", owner: "Alex Chen", sparkRec: "Raise bids on top 3 brand terms — ROAS 6.1×", blueprintReady: true },
+  { id: 2, name: "Non-Brand — Singapore SMEs", platforms: ["Google Ads"], status: "optimising", budget: 22000, spend: 18900, conversions: 247, cpl: 76.52, trackingStatus: "ok", approvalStatus: "approved", owner: "Sarah Park", sparkRec: "Add 14 negatives → cut ~$1,840 wasted spend", blueprintReady: true },
+  { id: 3, name: "Competitor Conquest — SEMrush", platforms: ["Google Ads"], status: "live", budget: 9000, spend: 8200, conversions: 58, cpl: 141.38, trackingStatus: "warning", approvalStatus: "approved", owner: "Alex Chen", sparkRec: "Pause low-converting ad group — CPA 2× target", blueprintReady: true },
+  { id: 4, name: "Enterprise Lead Gen", platforms: ["Google Ads", "Microsoft Advertising"], status: "approval", budget: 18000, spend: 0, conversions: 0, cpl: 0, trackingStatus: "warning", approvalStatus: "pending", owner: "Sarah Park", blueprintReady: true },
+  { id: 5, name: "Baidu China Expansion", platforms: ["Baidu"], status: "data_check", budget: 12000, spend: 0, conversions: 0, cpl: 0, trackingStatus: "error", approvalStatus: "not_required", owner: "Priya Sharma", blueprintReady: false },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Blueprint generator (mock) ───────────────────────────────────────────────
 
-function getInitialForm(mode: WizardMode, campaign?: Campaign | null): CampaignForm {
-  if (mode === "create" || !campaign) {
-    return {
-      name: "", primaryGoal: "", urgency: "normal", maxCpl: "", maxDaily: "",
-      product: "", offer: "", geography: "", audience: "", landingPage: "",
-      platforms: ["Google Ads", "Microsoft Advertising"], totalBudget: "", budgetStyle: "balanced",
-      searchIntent: "", brandKeywords: "", serviceKeywords: "", negativeKeywords: "", acceptedKeywords: [],
-      headline1: "", headline2: "", headline3: "", desc1: "", desc2: "",
-      ga4Event: "generate_lead", owner: "Alex Chen",
-    };
-  }
+function generateBlueprint(intent: CampaignIntent): GeneratedBlueprint {
+  const product = intent.offer || "your product";
+  const geo = intent.geography?.split(",")[0]?.trim() || "APAC";
   return {
-    name: campaign.name, primaryGoal: campaign.goal, urgency: "normal", maxCpl: "", maxDaily: "",
-    product: "SPARK AI — AI-powered marketing platform for B2B SaaS teams",
-    offer: "Free 14-day trial", geography: "Singapore, Malaysia, Australia",
-    audience: "Marketing managers at B2B SaaS companies", landingPage: "https://sparkapp.io/lp/trial",
-    platforms: campaign.platforms, totalBudget: campaign.budget.toString(), budgetStyle: "balanced",
-    searchIntent: "Marketing software for teams replacing their agency",
-    brandKeywords: "spark ai, spark ai platform", serviceKeywords: "marketing automation software",
-    negativeKeywords: "free, tutorial, jobs, reddit", acceptedKeywords: [],
-    headline1: "SPARK AI — Marketing Suite", headline2: "AI-Powered Campaign Manager",
-    headline3: "Free 14-Day Trial", desc1: "Plan, launch, optimise with AI.",
-    desc2: "Connect all channels from one command centre.", ga4Event: "generate_lead",
-    owner: campaign.owner,
+    strategicAngle: `Position ${product} as the high-trust AI alternative to legacy marketing agencies for B2B SaaS teams in ${geo}. Lead with the efficiency and clarity angle — prospects are already frustrated with slow, expensive, opaque retainers. SPARK campaigns should feel decisive and outcome-focused.`,
+    platforms: [
+      { name: "Google Ads", budgetPct: 70, rationale: "Highest search volume. Captures active demand from users already searching for solutions.", recommended: true },
+      { name: "Microsoft Advertising", budgetPct: 20, rationale: "Lower CPCs (avg 18% cheaper). Strong reach among enterprise IT decision-makers on Bing.", recommended: true },
+      { name: "Baidu", budgetPct: 10, rationale: "Relevant if China market is a priority. Requires local entity or partner for account access.", recommended: false },
+    ],
+    keywordThemes: [
+      { id: 1, name: "Brand Core", intent: "Brand", keywords: ["spark ai", "spark ai platform", "spark marketing tool", "spark ai pricing"], approved: null },
+      { id: 2, name: "High-Intent Buyers", intent: "High Intent", keywords: ["marketing automation software", "ai campaign manager", "best marketing platform 2025", "marketing software for saas"], approved: null },
+      { id: 3, name: "Product Category", intent: "Product", keywords: ["campaign management tool", "ppc management software", "omnichannel marketing platform", "ai ad platform"], approved: null },
+      { id: 4, name: `Competitor Terms`, intent: "Competitor", keywords: ["hubspot alternative", "marketo alternative", "salesforce marketing alternative", "semrush alternatives"], approved: null },
+      { id: 5, name: `${geo} Local Intent`, intent: "Local", keywords: [`marketing software ${geo.toLowerCase()}`, `marketing agency replacement ${geo.toLowerCase()}`, `b2b marketing tool ${geo.toLowerCase()}`], approved: null },
+    ],
+    negativeThemes: [
+      { id: 1, name: "Career Searches", rationale: "Eliminates job-seekers from click budget", terms: ["jobs", "salary", "career", "hiring", "intern", "vacancy"] },
+      { id: 2, name: "Free / DIY Intent", rationale: "Filters out non-commercial visitors unlikely to convert", terms: ["free", "open source", "diy", "template", "free trial forever", "crack"] },
+      { id: 3, name: "Educational", rationale: "Prevents budget waste on learners rather than buyers", terms: ["tutorial", "course", "certification", "how to", "learn", "youtube", "reddit"] },
+    ],
+    adDirection: {
+      angle: "Lead with the AI co-pilot angle — SPARK removes the complexity of running paid search without needing an agency. Messaging should emphasise speed to results, less wasted spend, and the unified command-centre approach.",
+      tone: "Confident, concise, outcome-first. Avoid jargon. Speak to marketing managers who are accountable for pipeline, not clicks.",
+      headlines: ["SPARK AI — Marketing Suite", `Free ${intent.offer?.includes("trial") ? "14-Day" : ""} Trial`, `Reduce Wasted Ad Spend`],
+      descriptions: [
+        `Plan, launch and optimise paid search campaigns with AI — no agency required. One platform for ${intent.geography || "APAC"} and beyond.`,
+        `${intent.offer || "Start free today"}. AI-powered keyword strategy, budget pacing and creative in one command centre.`,
+      ],
+    },
+    conversionEvent: intent.primaryGoal === "leads" ? "generate_lead" : intent.primaryGoal === "sales" ? "purchase" : "appointment_booked",
+    trackingNotes: "Google Tag Manager recommended for implementation. Ensure the conversion tag fires on the thank-you page, not the CTA click. Verify with Google Tag Assistant before requesting approval.",
+    providerReadiness: { google: intent.landingPage?.startsWith("http") ? 85 : 60, bing: 72 },
   };
 }
 
-function generateMockKeywords(form: CampaignForm): SuggestedKeyword[] {
-  const prod = form.product?.split(" ")[0]?.toLowerCase() || "marketing";
-  let id = 1;
-  return [
-    { id: id++, term: `${prod} software`, group: "Product", matchType: "Exact", cpcRange: "$3.50–$6.00", competition: "High", accepted: null },
-    { id: id++, term: "ai marketing platform", group: "Product", matchType: "Exact", cpcRange: "$4.00–$7.50", competition: "High", accepted: null },
-    { id: id++, term: "marketing automation software", group: "High Intent", matchType: "Exact", cpcRange: "$3.80–$6.20", competition: "High", accepted: null },
-    { id: id++, term: `best ${prod} tool`, group: "High Intent", matchType: "Phrase", cpcRange: "$2.80–$5.00", competition: "Medium", accepted: null },
-    { id: id++, term: "spark ai", group: "Brand", matchType: "Exact", cpcRange: "$0.80–$1.50", competition: "Low", accepted: null },
-    { id: id++, term: "spark ai marketing", group: "Brand", matchType: "Phrase", cpcRange: "$0.90–$1.80", competition: "Low", accepted: null },
-    { id: id++, term: "hubspot alternative", group: "Competitor", matchType: "Exact", cpcRange: "$5.50–$9.00", competition: "High", accepted: null },
-    { id: id++, term: form.geography ? `marketing software ${form.geography.split(",")[0].trim().toLowerCase()}` : "marketing software singapore", group: "Local", matchType: "Phrase", cpcRange: "$2.00–$3.80", competition: "Medium", accepted: null },
-    { id: id++, term: "what is marketing automation", group: "Informational", matchType: "Broad", cpcRange: "$0.80–$1.50", competition: "Low", accepted: null },
-  ];
-}
+// ─── Blueprint Studio ─────────────────────────────────────────────────────────
 
-const NEG_SUGGESTIONS = ["free", "open source", "jobs", "salary", "template", "tutorial", "course", "reddit", "youtube", "how to", "certification", "cheap"];
+const STUDIO_SECTIONS = [
+  { id: "intent", label: "Campaign Intent", icon: Target },
+  { id: "platforms", label: "Platform Strategy", icon: Globe },
+  { id: "keywords", label: "Keyword Themes", icon: Hash },
+  { id: "budget", label: "Budget & Pacing", icon: DollarSign },
+  { id: "ads", label: "Ad Direction", icon: Wand2 },
+  { id: "tracking", label: "Tracking", icon: Shield },
+  { id: "review", label: "Review & Approval", icon: CheckCircle },
+];
 
-interface ReadinessItem { label: string; done: boolean; critical: boolean }
-
-function getReadiness(form: CampaignForm): ReadinessItem[] {
-  return [
-    { label: "Primary goal selected", done: !!form.primaryGoal, critical: true },
-    { label: "Product described", done: form.product.length > 15, critical: true },
-    { label: "Landing page URL", done: !!form.landingPage && form.landingPage.startsWith("http"), critical: true },
-    { label: "Platform selected", done: form.platforms.length > 0, critical: true },
-    { label: "Budget set", done: Number(form.totalBudget) > 0, critical: true },
-    { label: "Keywords added", done: !!(form.brandKeywords || form.serviceKeywords || form.searchIntent), critical: false },
-    { label: "GA4 event configured", done: !!form.ga4Event, critical: false },
-    { label: "Negative keywords added", done: !!form.negativeKeywords, critical: false },
-    { label: "Ad headlines written", done: !!(form.headline1 && form.headline2), critical: false },
-  ];
-}
-
-function readinessScore(form: CampaignForm) {
-  const items = getReadiness(form);
-  return Math.round((items.filter((i) => i.done).length / items.length) * 100);
-}
-
-function canRequestApproval(form: CampaignForm) {
-  return getReadiness(form).filter((i) => i.critical).every((i) => i.done);
-}
-
-// ─── Workspace Steps ──────────────────────────────────────────────────────────
-
-const STEPS = ["Goal", "Audience", "Keywords & Budget", "Ads & Tracking", "Review"];
-
-function GoalStep({ form, setField }: { form: CampaignForm; setField: (k: string, v: any) => void }) {
-  const [showGuardrails, setShowGuardrails] = useState(false);
+function SectionNav({
+  active, setActive, generatedSections, completedSections,
+}: { active: string; setActive: (s: string) => void; generatedSections: Set<string>; completedSections: Set<string> }) {
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-          What is the primary business outcome this campaign should drive?<br />
-          SPARK will optimise bids, measurement, and recommendations around this goal.
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          {GOAL_OPTIONS.map((g) => (
-            <button key={g.value} onClick={() => setField("primaryGoal", g.value)}
-              className={`group text-left p-5 rounded-2xl border transition-all duration-200 ${form.primaryGoal === g.value
-                ? "border-primary/60 bg-gradient-to-br from-primary/10 to-primary/5 shadow-[0_0_0_1px_rgba(124,58,237,0.15)]"
-                : "border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04]"}`}>
-              <div className="flex items-center justify-between mb-2">
-                <p className={`font-semibold text-sm ${form.primaryGoal === g.value ? "text-primary" : "text-foreground"}`}>{g.label}</p>
-                {form.primaryGoal === g.value && <CheckCircle size={14} className="text-primary" />}
+    <nav className="w-52 shrink-0 flex flex-col border-r border-white/[0.06] bg-[#0c0e16] overflow-y-auto">
+      <div className="px-5 py-6 border-b border-white/[0.06]">
+        <p className="text-xs font-bold text-primary/70 uppercase tracking-widest">Blueprint Studio</p>
+      </div>
+      <div className="flex-1 py-4 space-y-0.5 px-2">
+        {STUDIO_SECTIONS.map((s) => {
+          const isActive = active === s.id;
+          const isCompleted = completedSections.has(s.id);
+          const isGenerated = generatedSections.has(s.id);
+          const Icon = s.icon;
+          return (
+            <button key={s.id} onClick={() => setActive(s.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-white/[0.06] text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.03]"}`}>
+              <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-primary/20" : "bg-white/[0.04]"}`}>
+                <Icon size={12} className={isActive ? "text-primary" : ""} />
               </div>
-              <p className="text-xs text-muted-foreground">{g.desc}</p>
+              <span className="text-sm flex-1">{s.label}</span>
+              {isCompleted && <Check size={11} className="text-green-400 shrink-0" />}
+              {!isCompleted && isGenerated && <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
-
-      <div>
-        <p className="text-sm font-semibold mb-3">Budget Urgency</p>
-        <div className="flex gap-2">
-          {[["test","Test","Learn before spending full budget"],["normal","Normal","Standard pacing — recommended"],["aggressive","Aggressive","Maximise daily spend"]].map(([v,l,d]) => (
-            <button key={v} onClick={() => setField("urgency", v)}
-              className={`flex-1 p-4 rounded-2xl border text-left transition-all ${form.urgency === v ? "border-primary/40 bg-primary/8" : "border-white/5 bg-white/[0.02] hover:border-white/10"}`}>
-              <p className={`font-semibold text-sm ${form.urgency === v ? "text-primary" : ""}`}>{l}</p>
-              <p className="text-xs text-muted-foreground mt-1">{d}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <button onClick={() => setShowGuardrails(!showGuardrails)}
-        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-        <ChevronDown size={12} className={`transition-transform ${showGuardrails ? "rotate-180" : ""}`} /> Advanced guardrails
-      </button>
-      {showGuardrails && (
-        <div className="grid grid-cols-2 gap-4 p-5 rounded-2xl border border-white/5 bg-white/[0.02]">
-          <div><Label className="text-xs text-muted-foreground">Max CPL Target ($)</Label><Input placeholder="e.g. 120" type="number" className="mt-2 h-9 bg-white/[0.03] border-white/10" value={form.maxCpl} onChange={(e) => setField("maxCpl", e.target.value)} /></div>
-          <div><Label className="text-xs text-muted-foreground">Max Daily Spend ($)</Label><Input placeholder="e.g. 500" type="number" className="mt-2 h-9 bg-white/[0.03] border-white/10" value={form.maxDaily} onChange={(e) => setField("maxDaily", e.target.value)} /></div>
-        </div>
-      )}
-    </div>
+    </nav>
   );
 }
 
-function AudienceStep({ form, setField }: { form: CampaignForm; setField: (k: string, v: any) => void }) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <Label className="text-sm font-semibold">What are you promoting?</Label>
-        <p className="text-xs text-muted-foreground mt-1 mb-3">SPARK uses this to generate keyword and copy suggestions. Be specific about the product and who it's for.</p>
-        <Textarea placeholder="e.g. SPARK AI — an AI-powered marketing platform for B2B SaaS teams. Replaces agency work for marketing managers who need to run campaigns without technical support." value={form.product} onChange={(e) => setField("product", e.target.value)} className="h-24 text-sm resize-none bg-white/[0.02] border-white/8" />
-      </div>
-      <div className="grid grid-cols-2 gap-5">
-        <div><Label className="text-sm font-semibold">Offer or CTA</Label><Input placeholder="e.g. Free 14-day trial" className="mt-2 h-10 bg-white/[0.02] border-white/8" value={form.offer} onChange={(e) => setField("offer", e.target.value)} /></div>
-        <div><Label className="text-sm font-semibold">Target Geography</Label><Input placeholder="e.g. Singapore, Malaysia, Australia" className="mt-2 h-10 bg-white/[0.02] border-white/8" value={form.geography} onChange={(e) => setField("geography", e.target.value)} /></div>
-      </div>
-      <div><Label className="text-sm font-semibold">Target Audience</Label><Input placeholder="e.g. Marketing managers at B2B SaaS companies, 10–200 employees" className="mt-2 h-10 bg-white/[0.02] border-white/8" value={form.audience} onChange={(e) => setField("audience", e.target.value)} /></div>
-      <div>
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-semibold">Landing Page URL <span className="text-red-400">*</span></Label>
-          {form.landingPage && form.landingPage.startsWith("http") && <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={11} />Valid URL</span>}
-        </div>
-        <Input placeholder="https://yoursite.com/campaign-page" className="mt-2 h-10 font-mono text-xs bg-white/[0.02] border-white/8" value={form.landingPage} onChange={(e) => setField("landingPage", e.target.value)} />
-        {form.landingPage && !form.landingPage.startsWith("http") && <p className="text-xs text-red-400 mt-1.5">URL must start with https://</p>}
-      </div>
-    </div>
-  );
-}
+// ── Intent Section ────────────────────────────────────────────────────────────
 
-function KeywordsBudgetStep({ form, setField }: { form: CampaignForm; setField: (k: string, v: any) => void }) {
-  const [loadingKw, setLoadingKw] = useState(false);
-  const [loadingNeg, setLoadingNeg] = useState(false);
-  const [suggestions, setSuggestions] = useState<SuggestedKeyword[]>(form.acceptedKeywords);
-  const [showSuggestions, setShowSuggestions] = useState(form.acceptedKeywords.length > 0);
-
-  const suggestKeywords = async () => {
-    setLoadingKw(true);
-    await new Promise((r) => setTimeout(r, 1100));
-    const kws = generateMockKeywords(form);
-    setSuggestions(kws); setField("acceptedKeywords", kws); setShowSuggestions(true); setLoadingKw(false);
+function IntentSection({ intent, setIntent, onGenerate, generating }: {
+  intent: CampaignIntent; setIntent: (i: CampaignIntent) => void; onGenerate: () => void; generating: boolean;
+}) {
+  const set = (k: keyof CampaignIntent, v: any) => setIntent({ ...intent, [k]: v });
+  const toggleSecondary = (g: string) => {
+    set("secondaryGoals", intent.secondaryGoals.includes(g)
+      ? intent.secondaryGoals.filter((x) => x !== g)
+      : [...intent.secondaryGoals, g]);
   };
 
-  const suggestNegatives = async () => {
-    setLoadingNeg(true);
-    await new Promise((r) => setTimeout(r, 700));
-    const current = form.negativeKeywords ? form.negativeKeywords.split(",").map((s) => s.trim()) : [];
-    setField("negativeKeywords", [...new Set([...current, ...NEG_SUGGESTIONS.slice(0, 8)])].join(", "));
-    setLoadingNeg(false);
-  };
-
-  const setKwAccepted = (id: number, accepted: boolean) => {
-    const updated = suggestions.map((k) => k.id === id ? { ...k, accepted } : k);
-    setSuggestions(updated); setField("acceptedKeywords", updated);
-  };
-
-  const ALL_PLATFORMS: Platform[] = ["Google Ads", "Microsoft Advertising", "Baidu", "Naver", "Yahoo Japan"];
-  const budget = Number(form.totalBudget || 0);
-  const accepted = suggestions.filter((k) => k.accepted === true).length;
+  const canGenerate = !!intent.primaryGoal && intent.name.length > 0;
 
   return (
-    <div className="space-y-8">
-      {/* Platforms */}
+    <div className="max-w-2xl space-y-12">
+      {/* Campaign name */}
       <div>
-        <p className="text-sm font-semibold mb-1">Platforms</p>
-        <p className="text-xs text-muted-foreground mb-4">SPARK creates a separate plan per platform under one unified budget.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          {ALL_PLATFORMS.map((p) => {
-            const sel = form.platforms.includes(p);
-            const cs = PLATFORM_STATUS[p] === "coming_soon";
-            const conn = PLATFORM_STATUS[p] === "connected";
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block mb-4">Campaign Name</label>
+        <input
+          type="text"
+          placeholder="Give this campaign a name…"
+          value={intent.name}
+          onChange={(e) => set("name", e.target.value)}
+          className="w-full bg-transparent border-0 border-b border-white/10 text-3xl font-bold placeholder:text-white/15 focus:outline-none focus:border-primary/40 transition-colors pb-2"
+          data-testid="input-campaign-name"
+        />
+      </div>
+
+      {/* Primary objective */}
+      <div>
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block mb-2">Primary Objective <span className="text-red-400 ml-1">required</span></label>
+        <p className="text-sm text-muted-foreground mb-5">Everything — bids, keywords, copy, and measurement — flows from this choice.</p>
+        <div className="grid grid-cols-2 gap-3">
+          {PRIMARY_GOALS.map((g) => {
+            const active = intent.primaryGoal === g.value;
             return (
-              <button key={p} disabled={cs}
-                onClick={() => { if (cs) return; setField("platforms", sel ? form.platforms.filter((x) => x !== p) : [...form.platforms, p]); }}
-                className={`p-4 rounded-2xl border text-left transition-all ${sel ? "border-primary/40 bg-primary/8" : "border-white/5 bg-white/[0.02] hover:border-white/10"} ${cs ? "opacity-40 cursor-not-allowed" : ""}`}>
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-sm font-semibold ${sel ? "text-primary" : ""}`}>{p === "Microsoft Advertising" ? "Microsoft / Bing" : p}</p>
-                  {sel && <CheckCircle size={12} className="text-primary shrink-0" />}
+              <button key={g.value} onClick={() => set("primaryGoal", g.value)}
+                className={`text-left p-5 rounded-2xl border transition-all duration-200 group ${active ? "border-primary/50 bg-gradient-to-br from-primary/10 to-primary/5" : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04]"}`}>
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <p className={`font-semibold text-base ${active ? "text-primary" : "text-foreground"}`}>{g.label}</p>
+                  {active && <CheckCircle size={15} className="text-primary shrink-0 mt-0.5" />}
                 </div>
-                <p className="text-xs text-muted-foreground">{conn ? "● Connected" : cs ? "Coming soon" : "○ Not connected"}</p>
+                <p className="text-sm text-muted-foreground">{g.desc}</p>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Budget */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2">
-          <Label className="text-sm font-semibold">Monthly Budget ($) <span className="text-red-400">*</span></Label>
-          <Input type="number" placeholder="e.g. 15000" className="mt-2 h-10 bg-white/[0.02] border-white/8 text-base font-semibold" value={form.totalBudget} onChange={(e) => setField("totalBudget", e.target.value)} />
-          {budget > 0 && form.platforms.length > 1 && <p className="text-xs text-muted-foreground mt-1.5">Suggested split: <span className="text-foreground">${Math.round(budget * 0.7).toLocaleString()}</span> Google · <span className="text-foreground">${Math.round(budget * 0.2).toLocaleString()}</span> Bing</p>}
-        </div>
-        <div>
-          <Label className="text-sm font-semibold">Pacing</Label>
-          <Select value={form.budgetStyle} onValueChange={(v) => setField("budgetStyle", v)}>
-            <SelectTrigger className="mt-2 h-10 bg-white/[0.02] border-white/8"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="conservative">Conservative</SelectItem><SelectItem value="balanced">Balanced</SelectItem><SelectItem value="aggressive">Aggressive</SelectItem></SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <Separator className="bg-white/5" />
-
-      {/* Keyword intent */}
+      {/* Secondary objectives */}
       <div>
-        <Label className="text-sm font-semibold">What would your customers search for?</Label>
-        <Textarea placeholder="Describe it naturally — e.g. 'Marketing software that helps small teams run campaigns without an agency. They might search for HubSpot or Marketo alternatives.'" value={form.searchIntent} onChange={(e) => setField("searchIntent", e.target.value)} className="mt-2 h-16 text-sm resize-none bg-white/[0.02] border-white/8" />
-        <div className="flex gap-2.5 mt-3">
-          <button onClick={suggestKeywords} disabled={loadingKw}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-primary/30 bg-primary/8 text-xs text-primary hover:bg-primary/12 transition-colors disabled:opacity-60" data-testid="btn-suggest-keywords">
-            {loadingKw ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />} Suggest Keywords with AI
-          </button>
-          <button onClick={suggestNegatives} disabled={loadingNeg}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/8 bg-white/[0.02] text-xs text-muted-foreground hover:text-foreground hover:border-white/15 transition-colors disabled:opacity-60">
-            {loadingNeg ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />} Suggest Negatives
-          </button>
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block mb-3">Secondary Objectives <span className="text-muted-foreground/50 font-normal ml-1 text-xs normal-case">optional — select any that apply</span></label>
+        <div className="flex flex-wrap gap-2">
+          {SECONDARY_GOALS.map((g) => {
+            const active = intent.secondaryGoals.includes(g);
+            return (
+              <button key={g} onClick={() => toggleSecondary(g)}
+                className={`px-4 py-2 rounded-full text-sm border transition-all ${active ? "border-primary/40 bg-primary/10 text-primary" : "border-white/[0.06] text-muted-foreground hover:border-white/15 hover:text-foreground"}`}>
+                {active && <span className="mr-1">✓</span>}{g}
+              </button>
+            );
+          })}
+        </div>
+        {intent.secondaryGoals.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-3">SPARK will factor these into keyword recommendations and optimisation notes, without overriding the primary objective.</p>
+        )}
+      </div>
+
+      {/* Offer, geo, audience, landing page */}
+      <div className="space-y-6">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block">Campaign Context</label>
+        <div>
+          <p className="text-sm font-medium mb-2">What's the offer or CTA?</p>
+          <Input placeholder="e.g. Free 14-day trial, Book a demo, Download the guide" value={intent.offer} onChange={(e) => set("offer", e.target.value)} className="h-11 bg-white/[0.02] border-white/[0.08] text-sm" />
+        </div>
+        <div className="grid grid-cols-2 gap-5">
+          <div>
+            <p className="text-sm font-medium mb-2">Target Geography</p>
+            <Input placeholder="e.g. Singapore, Malaysia, Australia" value={intent.geography} onChange={(e) => set("geography", e.target.value)} className="h-11 bg-white/[0.02] border-white/[0.08] text-sm" />
+          </div>
+          <div>
+            <p className="text-sm font-medium mb-2">Monthly Budget ($)</p>
+            <Input type="number" placeholder="e.g. 15000" value={intent.totalBudget} onChange={(e) => set("totalBudget", e.target.value)} className="h-11 bg-white/[0.02] border-white/[0.08] text-sm" />
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium mb-2">Who are you targeting?</p>
+          <Input placeholder="e.g. Marketing managers at B2B SaaS companies, 10–200 employees" value={intent.audience} onChange={(e) => set("audience", e.target.value)} className="h-11 bg-white/[0.02] border-white/[0.08] text-sm" />
+        </div>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium">Landing Page URL</p>
+            {intent.landingPage?.startsWith("http") && <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={11} /> Valid</span>}
+          </div>
+          <Input placeholder="https://yoursite.com/campaign" value={intent.landingPage} onChange={(e) => set("landingPage", e.target.value)} className="h-11 bg-white/[0.02] border-white/[0.08] text-sm font-mono" />
         </div>
       </div>
 
-      {/* AI keyword results */}
-      {showSuggestions && suggestions.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold">AI Keyword Suggestions</p>
-            <span className="text-xs text-muted-foreground">{accepted}/{suggestions.length} accepted</span>
-          </div>
-          <div className="space-y-1.5 max-h-56 overflow-y-auto">
-            {suggestions.map((kw) => (
-              <div key={kw.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${kw.accepted === true ? "bg-green-500/5 border border-green-500/20" : kw.accepted === false ? "opacity-30" : "border border-white/5 bg-white/[0.02]"}`}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-mono text-xs">{kw.term}</span>
-                    <span className={`text-xs ${GROUP_STYLES[kw.group]}`}>{kw.group}</span>
-                    <span className="text-xs text-muted-foreground/60">{kw.matchType}</span>
-                    <span className="text-xs text-muted-foreground/60">{kw.cpcRange}</span>
+      {/* Urgency */}
+      <div>
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block mb-3">Pacing Mode</label>
+        <div className="flex gap-3">
+          {[["test","Test","Start slow. Learn before scaling."],["balanced","Balanced","Standard pacing — recommended."],["aggressive","Aggressive","Spend the full daily budget."]].map(([v,l,d]) => (
+            <button key={v} onClick={() => set("urgency", v)}
+              className={`flex-1 p-4 rounded-2xl border text-left transition-all ${intent.urgency === v ? "border-primary/40 bg-primary/8" : "border-white/[0.06] bg-white/[0.02] hover:border-white/10"}`}>
+              <p className={`font-semibold text-sm ${intent.urgency === v ? "text-primary" : ""}`}>{l}</p>
+              <p className="text-xs text-muted-foreground mt-1">{d}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Generate CTA */}
+      <div className="pt-4">
+        <button onClick={onGenerate} disabled={!canGenerate || generating}
+          className={`flex items-center gap-3 px-8 py-4 rounded-2xl text-base font-semibold transition-all ${canGenerate && !generating ? "bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20" : "bg-white/[0.04] text-muted-foreground cursor-not-allowed"}`}>
+          {generating ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+          {generating ? "Generating blueprint…" : "Generate Campaign Blueprint"}
+        </button>
+        {!canGenerate && <p className="text-xs text-muted-foreground mt-3">Set a campaign name and primary objective to continue.</p>}
+      </div>
+    </div>
+  );
+}
+
+// ── Platform Strategy Section ─────────────────────────────────────────────────
+
+function PlatformSection({ blueprint, intent }: { blueprint: GeneratedBlueprint; intent: CampaignIntent }) {
+  const budget = Number(intent.totalBudget || 0);
+  return (
+    <div className="max-w-2xl space-y-10">
+      <div className="p-6 rounded-2xl bg-gradient-to-br from-primary/8 to-transparent border border-white/[0.06]">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles size={13} className="text-primary" />
+          <span className="text-xs font-semibold text-primary uppercase tracking-wider">SPARK Strategic Angle</span>
+        </div>
+        <p className="text-base leading-relaxed text-foreground/90">{blueprint.strategicAngle}</p>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-6">Recommended Platform Mix</p>
+        <div className="space-y-4">
+          {blueprint.platforms.map((p) => {
+            const alloc = budget ? Math.round(budget * p.budgetPct / 100) : null;
+            return (
+              <div key={p.name} className={`p-5 rounded-2xl border ${p.recommended ? "border-white/[0.08] bg-white/[0.02]" : "border-white/[0.04] bg-transparent opacity-60"}`}>
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <p className="font-semibold text-base">{p.name}</p>
+                      {p.recommended && <span className="text-xs px-2 py-0.5 rounded-full border border-primary/30 text-primary bg-primary/8">Recommended</span>}
+                      {!PLATFORM_CONN[p.name] && <span className="text-xs text-amber-400/80">Not connected</span>}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1.5">{p.rationale}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-2xl font-bold">{p.budgetPct}%</p>
+                    {alloc && <p className="text-sm text-muted-foreground">${alloc.toLocaleString()}/mo</p>}
                   </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  <button onClick={() => setKwAccepted(kw.id, true)} className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${kw.accepted === true ? "bg-green-500/20 text-green-300" : "text-muted-foreground hover:text-green-400 hover:bg-green-500/10"}`}><ThumbsUp size={11} /></button>
-                  <button onClick={() => setKwAccepted(kw.id, false)} className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${kw.accepted === false ? "bg-red-500/15 text-red-400" : "text-muted-foreground hover:text-red-400 hover:bg-red-500/10"}`}><ThumbsDown size={11} /></button>
+                <div className="h-1 bg-white/[0.06] rounded-full">
+                  <div className={`h-full rounded-full ${p.recommended ? "bg-primary" : "bg-white/20"}`} style={{ width: `${p.budgetPct}%` }} />
                 </div>
               </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Keyword Themes Section ────────────────────────────────────────────────────
+
+function KeywordsSection({ blueprint, setBlueprint }: { blueprint: GeneratedBlueprint; setBlueprint: (b: GeneratedBlueprint) => void }) {
+  const setThemeApproval = (id: number, approved: boolean) => {
+    setBlueprint({ ...blueprint, keywordThemes: blueprint.keywordThemes.map((t) => t.id === id ? { ...t, approved } : t) });
+  };
+  const setNegApproval = (id: number, approved: boolean) => {
+    setBlueprint({ ...blueprint, negativeThemes: blueprint.negativeThemes.map((t) => t.id === id ? { ...t, approved: approved as any } : t) });
+  };
+
+  const approved = blueprint.keywordThemes.filter((t) => t.approved === true).length;
+
+  return (
+    <div className="max-w-2xl space-y-10">
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Keyword Themes</p>
+          <span className="text-xs text-muted-foreground">{approved}/{blueprint.keywordThemes.length} themes approved</span>
+        </div>
+        <p className="text-sm text-muted-foreground mb-7">SPARK organises keywords into strategic themes, not flat lists. Approve, reject, or edit each cluster before launch.</p>
+        <div className="space-y-4">
+          {blueprint.keywordThemes.map((theme) => (
+            <div key={theme.id} className={`p-5 rounded-2xl border transition-all ${theme.approved === true ? "border-green-500/20 bg-green-500/[0.04]" : theme.approved === false ? "border-white/[0.03] opacity-40" : "border-white/[0.08] bg-white/[0.02]"}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${INTENT_DOT[theme.intent]}`} />
+                  <p className="font-semibold text-base">{theme.name}</p>
+                  <span className="text-xs text-muted-foreground">{theme.intent}</span>
+                </div>
+                <div className="flex gap-1.5">
+                  <button onClick={() => setThemeApproval(theme.id, true)}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${theme.approved === true ? "bg-green-500/20 text-green-400" : "text-muted-foreground hover:text-green-400 hover:bg-green-500/10"}`}><ThumbsUp size={13} /></button>
+                  <button onClick={() => setThemeApproval(theme.id, false)}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${theme.approved === false ? "bg-red-500/15 text-red-400" : "text-muted-foreground hover:text-red-400 hover:bg-red-500/10"}`}><ThumbsDown size={13} /></button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {theme.keywords.map((kw) => (
+                  <span key={kw} className="px-3 py-1.5 rounded-full text-sm bg-white/[0.05] border border-white/[0.06] text-foreground/80">{kw}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Separator className="bg-white/[0.06]" />
+
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Negative Keyword Themes</p>
+        <p className="text-sm text-muted-foreground mb-7">These prevent your budget from being consumed by non-commercial searches. Confirm which apply to this campaign.</p>
+        <div className="space-y-3">
+          {blueprint.negativeThemes.map((t) => (
+            <div key={t.id} className="flex items-center gap-5 p-5 rounded-2xl border border-white/[0.06] bg-white/[0.01]">
+              <div className="flex-1">
+                <div className="flex items-center gap-2.5 mb-1">
+                  <p className="font-semibold text-sm">{t.name}</p>
+                  <span className="text-xs text-red-400/70">Negative</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2.5">{t.rationale}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {t.terms.map((term) => <span key={term} className="px-2.5 py-1 rounded-full text-xs border border-red-500/15 text-red-300/70">{term}</span>)}
+                </div>
+              </div>
+              <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-white/[0.06] text-xs text-muted-foreground hover:text-foreground hover:border-white/15 transition-colors shrink-0">
+                <Check size={11} /> Confirm
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Budget & Pacing Section ───────────────────────────────────────────────────
+
+function BudgetSection({ intent, setIntent, blueprint }: { intent: CampaignIntent; setIntent: (i: CampaignIntent) => void; blueprint: GeneratedBlueprint }) {
+  const set = (k: keyof CampaignIntent, v: any) => setIntent({ ...intent, [k]: v });
+  const budget = Number(intent.totalBudget || 0);
+  return (
+    <div className="max-w-2xl space-y-10">
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-6">Monthly Budget</p>
+        <div className="flex items-end gap-3 mb-4">
+          <div className="flex-1">
+            <input type="number" placeholder="0" value={intent.totalBudget}
+              onChange={(e) => set("totalBudget", e.target.value)}
+              className="w-full bg-transparent border-0 border-b border-white/10 text-5xl font-bold placeholder:text-white/10 focus:outline-none focus:border-primary/40 transition-colors pb-2 tracking-tight" />
+          </div>
+          <span className="text-2xl text-muted-foreground pb-3">/month</span>
+        </div>
+        {budget > 0 && (
+          <p className="text-sm text-muted-foreground">{budget > 0 ? `Daily cap: ~$${Math.round(budget / 30).toLocaleString()}` : ""}</p>
+        )}
+      </div>
+
+      {budget > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Platform Allocation</p>
+          <div className="space-y-3">
+            {blueprint.platforms.filter((p) => p.recommended).map((p) => {
+              const alloc = Math.round(budget * p.budgetPct / 100);
+              return (
+                <div key={p.name} className="flex items-center gap-4">
+                  <span className="text-sm w-40 shrink-0">{p.name === "Microsoft Advertising" ? "Microsoft / Bing" : p.name}</span>
+                  <div className="flex-1 h-1.5 bg-white/[0.06] rounded-full">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${p.budgetPct}%` }} />
+                  </div>
+                  <span className="text-sm font-medium w-28 text-right shrink-0">${alloc.toLocaleString()} ({p.budgetPct}%)</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Pacing</p>
+        <div className="flex gap-3">
+          {[["test","Test"],["balanced","Balanced"],["aggressive","Aggressive"]].map(([v, l]) => (
+            <button key={v} onClick={() => set("urgency", v)}
+              className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-all ${intent.urgency === v ? "border-primary/40 bg-primary/8 text-primary" : "border-white/[0.06] text-muted-foreground hover:border-white/15 hover:text-foreground"}`}>{l}</button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Guardrails <span className="text-muted-foreground/50 font-normal text-xs normal-case ml-1">optional</span></p>
+        <div className="grid grid-cols-2 gap-5">
+          <div>
+            <p className="text-sm font-medium mb-2">Max CPL Target ($)</p>
+            <Input type="number" placeholder="e.g. 120" value={intent.maxCpl} onChange={(e) => set("maxCpl", e.target.value)} className="h-11 bg-white/[0.02] border-white/[0.08]" />
+            <p className="text-xs text-muted-foreground mt-1.5">SPARK will flag campaigns exceeding this threshold.</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium mb-2">Overall monthly cap ($)</p>
+            <Input type="number" placeholder="Same as budget or lower" value={intent.totalBudget} onChange={(e) => set("totalBudget", e.target.value)} className="h-11 bg-white/[0.02] border-white/[0.08]" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Ad Direction Section ──────────────────────────────────────────────────────
+
+function AdDirectionSection({ blueprint, setBlueprint }: { blueprint: GeneratedBlueprint; setBlueprint: (b: GeneratedBlueprint) => void }) {
+  const [editing, setEditing] = useState(false);
+  const ad = blueprint.adDirection;
+  const setAd = (update: Partial<typeof ad>) => setBlueprint({ ...blueprint, adDirection: { ...ad, ...update } });
+
+  return (
+    <div className="max-w-2xl space-y-10">
+      <div className="p-6 rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Sparkles size={13} className="text-primary" />
+            <span className="text-xs font-semibold text-primary uppercase tracking-wider">Strategic Messaging Angle</span>
+          </div>
+          <button onClick={() => setEditing(!editing)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+            <Edit size={10} />{editing ? "Done" : "Edit"}
+          </button>
+        </div>
+        {editing ? (
+          <Textarea value={ad.angle} onChange={(e) => setAd({ angle: e.target.value })} className="bg-white/[0.02] border-white/[0.08] text-sm min-h-[80px]" />
+        ) : (
+          <p className="text-base leading-relaxed text-foreground/90">{ad.angle}</p>
+        )}
+        <p className="text-xs text-muted-foreground mt-3">Tone: <span className="text-foreground/70">{ad.tone}</span></p>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-5">Ad Preview</p>
+        <div className="p-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] space-y-2 mb-6">
+          <p className="text-blue-400 text-base font-medium">{ad.headlines.join(" | ")}</p>
+          <p className="text-green-400/70 font-mono text-sm">sparkapp.io/lp/trial</p>
+          {ad.descriptions.map((d, i) => <p key={i} className="text-muted-foreground text-sm">{d}</p>)}
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Headlines <span className="font-normal text-muted-foreground/50 ml-1 normal-case text-xs">max 30 chars each</span></p>
+          {ad.headlines.map((h, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground/50 w-4 shrink-0">H{i+1}</span>
+              <Input maxLength={30} value={h} onChange={(e) => setAd({ headlines: ad.headlines.map((x, j) => j === i ? e.target.value : x) })} className="h-10 bg-white/[0.02] border-white/[0.08] text-sm" />
+              <span className={`text-xs shrink-0 ${h.length > 28 ? "text-red-400" : "text-muted-foreground/40"}`}>{h.length}/30</span>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-3 mt-5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Descriptions <span className="font-normal text-muted-foreground/50 ml-1 normal-case text-xs">max 90 chars each</span></p>
+          {ad.descriptions.map((d, i) => (
+            <div key={i}>
+              <Textarea maxLength={90} value={d} onChange={(e) => setAd({ descriptions: ad.descriptions.map((x, j) => j === i ? e.target.value : x) })} className="bg-white/[0.02] border-white/[0.08] text-sm h-12 resize-none" />
+              <p className={`text-xs mt-1 ${d.length > 85 ? "text-red-400" : "text-muted-foreground/40"}`}>{d.length}/90</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Tracking Section ──────────────────────────────────────────────────────────
+
+function TrackingSection({ blueprint, intent }: { blueprint: GeneratedBlueprint; intent: CampaignIntent }) {
+  const hasLp = intent.landingPage?.startsWith("http");
+  const items = [
+    { label: "Landing page URL", ok: !!hasLp, req: true, note: hasLp ? intent.landingPage : "Required before launch" },
+    { label: "GA4 conversion event", ok: !!blueprint.conversionEvent, req: true, note: blueprint.conversionEvent || "Not set" },
+    { label: "UTM template", ok: !!hasLp, req: false, note: "Will be auto-appended to the landing page URL" },
+    { label: "CRM lead source mapping", ok: false, req: false, note: "Optional — connect your CRM in Integrations" },
+  ];
+  return (
+    <div className="max-w-2xl space-y-10">
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Conversion Setup</p>
+        <p className="text-sm text-muted-foreground mb-7">SPARK validates your tracking configuration against both Google and Microsoft requirements before flagging provider readiness.</p>
+        <div className="space-y-3">
+          {items.map((item, i) => (
+            <div key={i} className={`flex items-start gap-4 p-5 rounded-2xl border ${item.ok ? "border-green-500/15 bg-green-500/[0.03]" : item.req ? "border-amber-500/15 bg-amber-500/[0.03]" : "border-white/[0.06]"}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${item.ok ? "bg-green-500/20" : item.req ? "bg-amber-500/20" : "bg-white/[0.06]"}`}>
+                {item.ok ? <CheckCircle size={13} className="text-green-400" /> : item.req ? <AlertTriangle size={13} className="text-amber-400" /> : <Circle size={13} className="text-white/20" />}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="font-medium text-sm">{item.label}</p>
+                  {item.req && !item.ok && <span className="text-xs text-amber-400">Required</span>}
+                </div>
+                <p className="text-sm text-muted-foreground font-mono">{item.note}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="p-5 rounded-2xl border border-white/[0.06] bg-white/[0.01]">
+        <div className="flex items-center gap-2 mb-3">
+          <Lightbulb size={13} className="text-amber-400" />
+          <p className="text-sm font-semibold">Implementation Note</p>
+        </div>
+        <p className="text-sm text-muted-foreground leading-relaxed">{blueprint.trackingNotes}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Review & Approval Section ─────────────────────────────────────────────────
+
+function ReviewSection({ intent, blueprint, onRequestApproval, saving }: {
+  intent: CampaignIntent; blueprint: GeneratedBlueprint; onRequestApproval: () => void; saving: boolean;
+}) {
+  const hasLp = intent.landingPage?.startsWith("http");
+  const approvedThemes = blueprint.keywordThemes.filter((t) => t.approved === true).length;
+  const canApprove = !!intent.primaryGoal && !!intent.name && !!intent.totalBudget && hasLp;
+
+  return (
+    <div className="max-w-2xl space-y-10">
+      {/* Executive summary */}
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-6">Campaign Summary</p>
+        <div className="space-y-5">
+          <div>
+            <p className="text-4xl font-bold tracking-tight mb-1">{intent.name || "Untitled Campaign"}</p>
+            <p className="text-lg text-muted-foreground">{intent.primaryGoal ? GOAL_LABELS[intent.primaryGoal] : "No goal set"}{intent.geography ? ` · ${intent.geography}` : ""}</p>
+          </div>
+          {intent.secondaryGoals.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {intent.secondaryGoals.map((g) => <span key={g} className="px-3 py-1 rounded-full text-xs border border-white/[0.08] text-muted-foreground">{g}</span>)}
+            </div>
+          )}
+          <div className="pt-4 grid grid-cols-2 gap-x-8 gap-y-4">
+            {[
+              ["Monthly Budget", intent.totalBudget ? `$${Number(intent.totalBudget).toLocaleString()}` : "—"],
+              ["Pacing", intent.urgency || "Balanced"],
+              ["Platforms", `${blueprint.platforms.filter((p) => p.recommended).length} platforms`],
+              ["Keyword Themes", `${approvedThemes}/${blueprint.keywordThemes.length} approved`],
+              ["Offer", intent.offer || "—"],
+              ["Audience", intent.audience ? intent.audience.slice(0, 50) + "…" : "—"],
+            ].map(([k, v]) => (
+              <div key={k as string}><p className="text-xs text-muted-foreground mb-0.5">{k}</p><p className="text-sm font-medium">{v}</p></div>
             ))}
           </div>
         </div>
-      )}
-
-      {/* Manual fields */}
-      <div className="grid grid-cols-2 gap-4">
-        <div><Label className="text-sm font-semibold">Brand Keywords</Label><Textarea placeholder="spark ai, spark ai platform" value={form.brandKeywords} onChange={(e) => setField("brandKeywords", e.target.value)} className="mt-2 h-16 font-mono text-xs resize-none bg-white/[0.02] border-white/8" /></div>
-        <div><Label className="text-sm font-semibold">Service Keywords</Label><Textarea placeholder="marketing automation software" value={form.serviceKeywords} onChange={(e) => setField("serviceKeywords", e.target.value)} className="mt-2 h-16 font-mono text-xs resize-none bg-white/[0.02] border-white/8" /></div>
-        <div className="col-span-2">
-          <Label className="text-sm font-semibold">Negative Keywords <span className="text-xs font-normal text-red-400/80 ml-1">— prevents wasted spend</span></Label>
-          <Textarea placeholder="free, tutorial, jobs, reddit, salary" value={form.negativeKeywords} onChange={(e) => setField("negativeKeywords", e.target.value)} className="mt-2 h-12 font-mono text-xs resize-none bg-red-500/[0.03] border-red-500/15" />
-        </div>
       </div>
-    </div>
-  );
-}
 
-function AdsTrackingStep({ form, setField }: { form: CampaignForm; setField: (k: string, v: any) => void }) {
-  const [generating, setGenerating] = useState(false);
+      <Separator className="bg-white/[0.06]" />
 
-  const generateCopy = async () => {
-    setGenerating(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setField("headline1", "SPARK AI — Marketing Suite");
-    setField("headline2", form.offer ? form.offer.slice(0, 30) : "AI Campaign Manager");
-    setField("headline3", "Free 14-Day Trial");
-    setField("desc1", `${(form.product || "AI marketing platform").slice(0, 60)}. No expertise required.`);
-    setField("desc2", `${form.offer || "Start free today"}. One platform for all your channels.`);
-    setGenerating(false);
-  };
-
-  const trackingItems = [
-    { label: "Landing page URL", done: !!form.landingPage && form.landingPage.startsWith("http"), req: true },
-    { label: "GA4 conversion event", done: !!form.ga4Event, req: true },
-    { label: "UTM template applied", done: !!form.landingPage, req: false },
-    { label: "CRM lead source mapping", done: false, req: false },
-  ];
-
-  return (
-    <div className="space-y-7">
+      {/* Provider draft readiness */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-sm font-semibold">Ad Copy</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Generated from your goal, offer, and product description</p>
-          </div>
-          <button onClick={generateCopy} disabled={generating}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-primary/30 bg-primary/8 text-xs text-primary hover:bg-primary/12 transition-colors disabled:opacity-60">
-            {generating ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />}
-            {form.headline1 ? "Regenerate" : "Generate with AI"}
-          </button>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-6">Provider Draft Readiness</p>
+        <div className="grid grid-cols-2 gap-4">
+          {([["Google Ads", blueprint.providerReadiness.google], ["Microsoft Advertising", blueprint.providerReadiness.bing]] as [string, number][]).map(([provider, pct]) => {
+            const connected = PLATFORM_CONN[provider as Platform];
+            const color = pct >= 80 ? "text-green-400" : pct >= 60 ? "text-amber-400" : "text-red-400";
+            const barColor = pct >= 80 ? "bg-green-400" : pct >= 60 ? "bg-amber-400" : "bg-red-400";
+            return (
+              <div key={provider} className={`p-5 rounded-2xl border ${connected ? "border-white/[0.08] bg-white/[0.02]" : "border-white/[0.04] opacity-50"}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-semibold text-sm">{provider === "Microsoft Advertising" ? "Microsoft / Bing" : provider}</p>
+                  <div className={`w-2 h-2 rounded-full ${connected ? "bg-green-400" : "bg-muted-foreground/30"}`} />
+                </div>
+                <p className={`text-3xl font-bold ${color} mb-3`}>{pct}%</p>
+                <div className="h-1 bg-white/[0.06] rounded-full">
+                  <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">{connected ? (pct >= 80 ? "Ready to draft" : "Incomplete — check tracking") : "Account not connected"}</p>
+              </div>
+            );
+          })}
         </div>
+        {!hasLp && <p className="text-sm text-amber-300 mt-4 flex items-center gap-2"><AlertTriangle size={13} /> Landing page URL required to reach full readiness.</p>}
+      </div>
 
-        {(form.headline1 || form.product) && (
-          <div className="p-5 mb-5 rounded-2xl border border-white/5 bg-white/[0.02] space-y-1.5">
-            <p className="text-xs text-muted-foreground mb-2">Live Preview</p>
-            <p className="text-blue-400 text-sm font-medium">{[form.headline1, form.headline2, form.headline3].filter(Boolean).join(" | ")}</p>
-            <p className="text-green-400/80 font-mono text-xs">{form.landingPage || "yoursite.com"}</p>
-            <p className="text-muted-foreground text-xs">{form.desc1 || "Your description will appear here."}</p>
-            {form.desc2 && <p className="text-muted-foreground text-xs">{form.desc2}</p>}
+      {/* Approval */}
+      <div className="pt-2">
+        {canApprove ? (
+          <button onClick={onRequestApproval} disabled={saving}
+            className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-primary text-white text-base font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-60">
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Shield size={18} />}
+            {saving ? "Submitting…" : "Request Approval"}
+          </button>
+        ) : (
+          <div className="flex items-start gap-3 p-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] text-sm text-amber-300">
+            <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+            Complete all required fields (goal, name, budget, landing page) to request approval.
           </div>
         )}
-
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          {(["headline1","headline2","headline3"] as const).map((k,i) => (
-            <div key={k}><Label className="text-xs text-muted-foreground">H{i+1} <span className="font-normal">(max 30)</span></Label><Input maxLength={30} value={form[k]} onChange={(e) => setField(k, e.target.value)} className="mt-1.5 h-9 text-xs bg-white/[0.02] border-white/8" placeholder={`Headline ${i+1}`} /></div>
-          ))}
-        </div>
-        <Textarea maxLength={90} placeholder="Description 1 (max 90 chars)…" value={form.desc1} onChange={(e) => setField("desc1", e.target.value)} className="h-11 text-xs resize-none mb-2 bg-white/[0.02] border-white/8" />
-        <Textarea maxLength={90} placeholder="Description 2 (max 90 chars)…" value={form.desc2} onChange={(e) => setField("desc2", e.target.value)} className="h-11 text-xs resize-none bg-white/[0.02] border-white/8" />
-      </div>
-
-      <Separator className="bg-white/5" />
-
-      <div>
-        <p className="text-sm font-semibold mb-4">Conversion Tracking</p>
-        <div className="space-y-2.5 mb-5">
-          {trackingItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-3 text-sm">
-              {item.done ? <CheckCircle size={14} className="text-green-400 shrink-0" /> : <Circle size={14} className="text-white/15 shrink-0" />}
-              <span className={item.done ? "text-foreground" : "text-muted-foreground"}>{item.label}</span>
-              {!item.done && item.req && <span className="ml-auto text-xs text-amber-400">Required</span>}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div><Label className="text-xs text-muted-foreground">GA4 Conversion Event</Label><Input value={form.ga4Event} onChange={(e) => setField("ga4Event", e.target.value)} className="mt-1.5 h-9 font-mono text-xs bg-white/[0.02] border-white/8" placeholder="generate_lead" /></div>
-          <div><Label className="text-xs text-muted-foreground">Final URL</Label><Input value={form.landingPage} onChange={(e) => setField("landingPage", e.target.value)} className="mt-1.5 h-9 font-mono text-xs bg-white/[0.02] border-white/8" placeholder="https://…" /></div>
-        </div>
       </div>
     </div>
   );
 }
 
-function ReviewStep({ form, mode }: { form: CampaignForm; mode: WizardMode }) {
-  const items = getReadiness(form);
-  const score = readinessScore(form);
-  const canApprove = canRequestApproval(form);
-  const accepted = form.acceptedKeywords.filter((k) => k.accepted === true);
-  const budget = Number(form.totalBudget || 0);
-  const criticalMissing = items.filter((i) => i.critical && !i.done);
+// ── Provider Readiness Panel ──────────────────────────────────────────────────
+
+function ProviderReadinessPanel({ blueprint, intent }: { blueprint: GeneratedBlueprint | null; intent: CampaignIntent }) {
+  const hasLp = intent.landingPage?.startsWith("http");
 
   return (
-    <div className="space-y-6">
-      {/* Score */}
-      <div className="p-6 rounded-2xl border border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent">
-        <div className="flex items-center justify-between mb-3">
-          <p className="font-semibold">Launch Readiness</p>
-          <span className={`text-2xl font-bold ${score >= 80 ? "text-green-400" : score >= 55 ? "text-amber-400" : "text-red-400"}`}>{score}%</span>
+    <div className="w-56 shrink-0 border-l border-white/[0.06] flex flex-col bg-[#0c0e16] overflow-y-auto">
+      <div className="px-5 py-5 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2 mb-0.5">
+          <Brain size={12} className="text-primary" />
+          <span className="text-xs font-bold text-primary">SPARK</span>
         </div>
-        <Progress value={score} className="h-1.5 mb-4" />
-        <div className="grid grid-cols-2 gap-2">
-          {items.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs">
-              {item.done ? <CheckCircle size={11} className="text-green-400 shrink-0" /> : <XCircle size={11} className={`${item.critical ? "text-red-400" : "text-white/20"} shrink-0`} />}
-              <span className={item.done ? "" : item.critical ? "text-red-300" : "text-muted-foreground"}>{item.label}</span>
-            </div>
-          ))}
-        </div>
+        <p className="text-xs text-muted-foreground">Blueprint status</p>
       </div>
 
-      {criticalMissing.length > 0 && (
-        <div className="flex items-start gap-3 p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 text-xs text-amber-300">
-          <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-          <span>Complete before requesting approval: <span className="font-semibold">{criticalMissing.map((i) => i.label).join(", ")}</span></span>
-        </div>
-      )}
+      {blueprint ? (
+        <div className="flex-1 px-5 py-5 space-y-6 overflow-y-auto">
+          {/* Provider readiness */}
+          <div className="space-y-3">
+            {([["Google Ads", blueprint.providerReadiness.google], ["Bing Ads", blueprint.providerReadiness.bing]] as [string, number][]).map(([p, pct]) => {
+              const color = pct >= 80 ? "text-green-400" : pct >= 60 ? "text-amber-400" : "text-red-400";
+              const barColor = pct >= 80 ? "bg-green-400" : pct >= 60 ? "bg-amber-400" : "bg-red-400";
+              return (
+                <div key={p}>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="text-muted-foreground">{p}</span>
+                    <span className={`font-semibold ${color}`}>{pct}%</span>
+                  </div>
+                  <div className="h-1 bg-white/[0.06] rounded-full">
+                    <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
-        {[["Goal", form.primaryGoal ? GOAL_LABELS[form.primaryGoal] : "—"],["Geography", form.geography || "—"],["Budget", budget ? `$${budget.toLocaleString()}/mo` : "—"],["Platforms", form.platforms.join(", ") || "—"],["Owner", form.owner],["Pacing", form.budgetStyle || "Balanced"]].map(([k, v]) => (
-          <div key={k}><p className="text-xs text-muted-foreground mb-0.5">{k}</p><p className="font-medium">{v}</p></div>
-        ))}
-      </div>
+          <Separator className="bg-white/[0.06]" />
 
-      {/* Accepted keywords */}
-      {accepted.length > 0 && (
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">{accepted.length} keyword{accepted.length !== 1 ? "s" : ""} accepted</p>
-          <div className="flex flex-wrap gap-2">
-            {accepted.slice(0, 8).map((k) => <span key={k.id} className={`text-xs font-mono px-2.5 py-1 rounded-lg ${GROUP_STYLES[k.group]} bg-white/[0.04] border border-white/8`}>{k.term}</span>)}
-            {accepted.length > 8 && <span className="text-xs text-muted-foreground">+{accepted.length - 8} more</span>}
+          {/* Quick status */}
+          <div className="space-y-2.5">
+            {[
+              { label: "Primary goal", ok: !!intent.primaryGoal },
+              { label: "Budget set", ok: !!intent.totalBudget },
+              { label: "Landing page", ok: !!hasLp },
+              { label: "Keywords", ok: blueprint.keywordThemes.some((t) => t.approved === true) },
+              { label: "Ad copy", ok: !!blueprint.adDirection.headlines[0] },
+              { label: "GA4 event", ok: !!blueprint.conversionEvent },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-2.5 text-xs">
+                {item.ok ? <CheckCircle size={11} className="text-green-400 shrink-0" /> : <Circle size={11} className="text-white/15 shrink-0" />}
+                <span className={item.ok ? "text-foreground/70" : "text-muted-foreground"}>{item.label}</span>
+              </div>
+            ))}
+          </div>
+
+          <Separator className="bg-white/[0.06]" />
+
+          {/* Strategic angle */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2">Strategic angle</p>
+            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-5">{blueprint.strategicAngle}</p>
           </div>
         </div>
-      )}
-
-      {/* Ad preview */}
-      {form.headline1 && (
-        <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] text-xs space-y-1">
-          <p className="text-blue-400 font-medium">{[form.headline1, form.headline2, form.headline3].filter(Boolean).join(" | ")}</p>
-          <p className="text-green-400/70 font-mono">{form.landingPage || "yoursite.com"}</p>
-          {form.desc1 && <p className="text-muted-foreground">{form.desc1}</p>}
+      ) : (
+        <div className="flex-1 px-5 py-5 flex flex-col items-center justify-center text-center">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+            <Sparkles size={16} className="text-primary/50" />
+          </div>
+          <p className="text-xs text-muted-foreground">Fill in Campaign Intent and generate the blueprint to see provider readiness.</p>
         </div>
       )}
     </div>
   );
 }
 
-// ─── Campaign Workspace (full-page overlay) ───────────────────────────────────
+// ── Blueprint Studio (main) ───────────────────────────────────────────────────
 
-interface WorkspaceProps { open: boolean; onClose: () => void; mode: WizardMode; campaign?: Campaign | null }
-
-function CampaignWorkspace({ open, onClose, mode, campaign }: WorkspaceProps) {
+function BlueprintStudio({ open, onClose, initialCampaign }: {
+  open: boolean; onClose: () => void; initialCampaign?: Campaign | null;
+}) {
   const { toast } = useToast();
-  const [step, setStep] = useState(0);
+  const [activeSection, setActiveSection] = useState("intent");
+  const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setFormState] = useState<CampaignForm>(() => getInitialForm(mode, campaign));
 
-  useEffect(() => {
-    if (open) { setFormState(getInitialForm(mode, campaign)); setStep(0); }
-  }, [open, mode, campaign]);
+  const [intent, setIntent] = useState<CampaignIntent>({
+    name: initialCampaign?.name || "",
+    primaryGoal: "",
+    secondaryGoals: [],
+    urgency: "balanced",
+    offer: "",
+    geography: "",
+    audience: "",
+    landingPage: "",
+    totalBudget: initialCampaign?.budget ? String(initialCampaign.budget) : "",
+    maxCpl: "",
+  });
 
-  const setField = useCallback((key: string, value: any) => setFormState((f) => ({ ...f, [key]: value })), []);
+  const [blueprint, setBlueprint] = useState<GeneratedBlueprint | null>(null);
+  const [generatedSections, setGeneratedSections] = useState<Set<string>>(new Set());
+  const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
 
-  const handleSaveDraft = async () => {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setSaving(false);
-    toast({ title: "Draft saved", description: `"${form.name || "Untitled"}" saved at step ${step + 1}.` });
+  const handleGenerate = async () => {
+    setGenerating(true);
+    await new Promise((r) => setTimeout(r, 1600));
+    const bp = generateBlueprint(intent);
+    setBlueprint(bp);
+    setGeneratedSections(new Set(["intent", "platforms", "keywords", "ads", "tracking"]));
+    setCompletedSections(new Set(["intent"]));
+    setGenerating(false);
+    setActiveSection("platforms");
+    toast({ title: "Blueprint generated", description: "SPARK has built your campaign strategy. Review and refine each section." });
   };
 
   const handleRequestApproval = async () => {
-    if (!canRequestApproval(form)) { toast({ title: "Campaign not ready", description: "Complete critical fields first.", variant: "destructive" }); return; }
     setSaving(true);
     await new Promise((r) => setTimeout(r, 1200));
     setSaving(false);
-    toast({ title: "Approval requested", description: `"${form.name || "Untitled"}" sent to approvers.` });
+    toast({ title: "Approval requested", description: `"${intent.name}" sent to approvers.` });
     onClose();
-  };
-
-  const score = readinessScore(form);
-  const canApprove = canRequestApproval(form);
-  const criticalCount = getReadiness(form).filter((i) => i.critical && !i.done).length;
-
-  // Brain content per step
-  const brainContent: { headline: string; bullets: string[]; warning?: string; tip?: string; actions?: { label: string; onClick: () => void }[] }[] = [
-    {
-      headline: form.primaryGoal ? `${GOAL_LABELS[form.primaryGoal]}` : "No goal set yet",
-      bullets: [form.primaryGoal ? `SPARK will optimise all bids and measurement around ${GOAL_LABELS[form.primaryGoal]}.` : "Your goal shapes everything — bids, measurement, and SPARK's recommendations.", form.urgency ? `Urgency: ${form.urgency}. ${form.urgency === "aggressive" ? "Full daily spend." : form.urgency === "test" ? "Low spend — learn first." : "Standard pacing."}` : ""],
-      tip: "Most B2B SaaS companies start with Generate Leads. You can add secondary goals later.",
-      actions: [
-        { label: "Recommend goal for my business", onClick: () => { setField("primaryGoal", "leads"); toast({ title: "Recommended: Generate Leads" }); } },
-        { label: "Apply sensible guardrails", onClick: () => { setField("maxCpl", "120"); setField("maxDaily", "500"); toast({ title: "Guardrails applied: max CPL $120, max daily $500" }); } },
-      ],
-    },
-    {
-      headline: form.product ? "Product brief captured" : "Product brief missing",
-      bullets: [form.product ? "SPARK will use your product description to generate keyword groups and ad copy." : "Add your product description to unlock AI keyword and copy suggestions.", form.geography ? `Targeting: ${form.geography}` : "Add a geography to localise keyword targeting.", form.landingPage ? "Landing page set." : "⚠ Landing page required before launch."],
-      warning: !form.product ? "A vague description weakens all downstream AI suggestions." : undefined,
-      tip: "Describe what your product does and who it's for. 2–3 sentences is ideal.",
-      actions: !form.product ? [{ label: "Add example description", onClick: () => { setField("product", "SPARK AI — an AI-powered marketing platform for B2B SaaS teams. Replaces agency work for marketing managers."); toast({ title: "Example description added" }); } }] : [],
-    },
-    {
-      headline: `${form.platforms.length} platform${form.platforms.length !== 1 ? "s" : ""} selected`,
-      bullets: [
-        form.totalBudget ? `$${Number(form.totalBudget).toLocaleString()}/mo` + (form.platforms.length > 1 ? ` across ${form.platforms.length} platforms` : "") : "Set a budget to see the recommended split.",
-        !form.negativeKeywords ? "⚠ No negative keywords — this is the #1 cause of wasted search spend." : `Negatives: ${form.negativeKeywords.split(",").filter(Boolean).length} terms`,
-        form.acceptedKeywords.filter((k) => k.accepted).length > 0 ? `${form.acceptedKeywords.filter((k) => k.accepted).length} AI keywords accepted` : "Use AI to generate keyword groups from your product brief.",
-      ].filter(Boolean),
-      warning: !form.negativeKeywords ? "Add negative keywords before launch." : undefined,
-      tip: "Start with Google Ads + Bing. Add other platforms after 30 days of data.",
-      actions: [
-        { label: "Recommend platform mix", onClick: () => { setField("platforms", ["Google Ads", "Microsoft Advertising"]); toast({ title: "Recommended: Google Ads + Microsoft Advertising" }); } },
-        { label: "Set recommended budget", onClick: () => { if (!form.totalBudget) { setField("totalBudget", "15000"); toast({ title: "Budget set: $15,000/mo" }); } } },
-      ],
-    },
-    {
-      headline: form.headline1 ? `"${form.headline1}"` : "No ad copy yet",
-      bullets: [form.headline1 ? "Headlines look good. Check character limits." : "Click 'Generate with AI' to create ad copy from your product brief.", form.ga4Event ? `GA4 event: ${form.ga4Event}` : "⚠ GA4 conversion event required for Smart Bidding to work.", form.landingPage ? "Landing page URL confirmed." : ""],
-      warning: !form.ga4Event ? "Smart Bidding cannot learn without a conversion event." : undefined,
-      tip: "Lead with your strongest benefit in H1. Put your offer in H3.",
-      actions: [
-        { label: "Generate ad copy", onClick: () => { setField("headline1", "SPARK AI — Marketing Suite"); setField("headline2", form.offer?.slice(0,30) || "AI Campaign Manager"); setField("headline3", "Free 14-Day Trial"); setField("desc1", `${(form.product || "AI platform").slice(0,60)}. No expertise required.`); setField("desc2", `${form.offer || "Start free today"}. One platform for all channels.`); toast({ title: "Ad copy generated" }); } },
-      ],
-    },
-    {
-      headline: `${score}% ready`,
-      bullets: [canApprove ? "All critical fields complete. You can request approval." : `${criticalCount} critical field${criticalCount !== 1 ? "s" : ""} still needed.`, form.acceptedKeywords.filter((k) => k.accepted).length > 0 ? `${form.acceptedKeywords.filter((k) => k.accepted).length} keywords will be included in the campaign structure.` : ""],
-      warning: !canApprove ? "Complete critical fields before requesting approval." : undefined,
-      tip: "Save Draft to continue later. Request Approval only when the campaign is production-ready.",
-      actions: [
-        { label: "Check readiness", onClick: () => { const missing = getReadiness(form).filter((i) => !i.done); toast({ title: missing.length ? `${missing.length} items remaining` : "Campaign is ready!", description: missing.map((i) => i.label).join(", ") || undefined }); } },
-      ],
-    },
-  ];
-
-  const brain = brainContent[step] ?? { headline: "", bullets: [] };
-
-  const renderStep = () => {
-    switch (step) {
-      case 0: return <GoalStep form={form} setField={setField} />;
-      case 1: return <AudienceStep form={form} setField={setField} />;
-      case 2: return <KeywordsBudgetStep form={form} setField={setField} />;
-      case 3: return <AdsTrackingStep form={form} setField={setField} />;
-      case 4: return <ReviewStep form={form} mode={mode} />;
-    }
   };
 
   if (!open) return null;
@@ -620,157 +825,106 @@ function CampaignWorkspace({ open, onClose, mode, campaign }: WorkspaceProps) {
   return (
     <div className="fixed inset-0 z-50 bg-[#0b0d14] flex flex-col">
       {/* Top bar */}
-      <div className="shrink-0 flex items-center gap-4 px-8 py-4 border-b border-white/5">
-        <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
+      <div className="shrink-0 flex items-center gap-4 px-6 py-4 border-b border-white/[0.06]">
+        <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors">
           <X size={16} />
         </button>
-        <div className="flex-1 flex items-center gap-3 min-w-0">
-          <Input
-            placeholder="Campaign name…"
-            value={form.name}
-            onChange={(e) => setField("name", e.target.value)}
-            className="h-8 text-base font-semibold bg-transparent border-0 border-b border-white/10 rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary/50 max-w-sm placeholder:font-normal placeholder:text-sm"
-            data-testid="input-campaign-name"
-          />
-          {mode === "edit" && <span className="text-xs text-amber-400 border border-amber-400/30 px-2 py-0.5 rounded-lg">Editing</span>}
+        <Separator orientation="vertical" className="h-5 bg-white/10" />
+        <div className="flex items-center gap-2">
+          <MonitorPlay size={15} className="text-primary" />
+          <span className="text-sm font-semibold">PPC Blueprint Studio</span>
         </div>
-
-        {/* Step dots */}
-        <div className="flex items-center gap-2 mx-4">
-          {STEPS.map((s, i) => (
-            <button key={i} onClick={() => setStep(i)} className="flex items-center gap-1.5 group" title={s}>
-              <div className={`transition-all rounded-full ${i === step ? "w-6 h-2 bg-primary" : i < step ? "w-2 h-2 bg-primary/40" : "w-2 h-2 bg-white/15"}`} />
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground">
-          <span className={score >= 80 ? "text-green-400" : score >= 55 ? "text-amber-400" : "text-red-400"}>{score}%</span>
-          <span>ready</span>
-        </div>
-        <button onClick={handleSaveDraft} disabled={saving}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
-          {saving ? <Loader2 size={11} className="animate-spin" /> : <FileText size={11} />} Save Draft
+        {intent.name && (
+          <>
+            <ChevronRight size={13} className="text-white/20" />
+            <span className="text-sm text-muted-foreground">{intent.name}</span>
+          </>
+        )}
+        <div className="flex-1" />
+        {blueprint && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            Blueprint active
+          </div>
+        )}
+        <button
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-xs text-muted-foreground hover:text-foreground transition-colors">
+          <FileText size={11} /> Save Draft
         </button>
       </div>
 
-      {/* Body: main content + SPARK Brain */}
+      {/* Body */}
       <div className="flex-1 overflow-hidden flex">
-        {/* Main content */}
+        <SectionNav
+          active={activeSection}
+          setActive={setActiveSection}
+          generatedSections={generatedSections}
+          completedSections={completedSections}
+        />
+
+        {/* Main canvas */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-2xl mx-auto px-8 py-10">
-            {/* Step header */}
-            <div className="mb-8">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                {STEPS.map((s, i) => (
-                  <span key={i} className="flex items-center gap-2">
-                    <button onClick={() => setStep(i)} className={`transition-colors ${i === step ? "text-primary font-semibold" : i < step ? "text-foreground/60 hover:text-foreground" : "text-muted-foreground/40"}`}>{s}</button>
-                    {i < STEPS.length - 1 && <ChevronRight size={10} className="text-white/15 shrink-0" />}
-                  </span>
-                ))}
-              </div>
-              <h2 className="text-2xl font-bold tracking-tight">{STEPS[step]}</h2>
+          <div className="px-14 py-12">
+            {/* Section heading */}
+            <div className="mb-10">
+              <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest mb-2">
+                {STUDIO_SECTIONS.find((s) => s.id === activeSection)?.label}
+              </p>
+              {activeSection !== "intent" && !blueprint && (
+                <div className="flex items-center gap-3 p-4 rounded-2xl border border-white/[0.06] bg-white/[0.01] text-sm text-muted-foreground">
+                  <Sparkles size={14} className="text-primary/40" />
+                  Complete the Campaign Intent section and generate your blueprint to unlock this section.
+                </div>
+              )}
             </div>
 
-            {renderStep()}
+            {activeSection === "intent" && (
+              <IntentSection intent={intent} setIntent={setIntent} onGenerate={handleGenerate} generating={generating} />
+            )}
+            {activeSection === "platforms" && blueprint && (
+              <PlatformSection blueprint={blueprint} intent={intent} />
+            )}
+            {activeSection === "keywords" && blueprint && (
+              <KeywordsSection blueprint={blueprint} setBlueprint={setBlueprint} />
+            )}
+            {activeSection === "budget" && (
+              <BudgetSection intent={intent} setIntent={setIntent} blueprint={blueprint || generateBlueprint(intent)} />
+            )}
+            {activeSection === "ads" && blueprint && (
+              <AdDirectionSection blueprint={blueprint} setBlueprint={setBlueprint} />
+            )}
+            {activeSection === "tracking" && blueprint && (
+              <TrackingSection blueprint={blueprint} intent={intent} />
+            )}
+            {activeSection === "review" && blueprint && (
+              <ReviewSection intent={intent} blueprint={blueprint} onRequestApproval={handleRequestApproval} saving={saving} />
+            )}
           </div>
         </div>
 
-        {/* SPARK Brain Panel */}
-        <div className="w-72 shrink-0 border-l border-white/5 flex flex-col overflow-y-auto">
-          {/* Brain header */}
-          <div className="px-6 py-5 border-b border-white/5 bg-gradient-to-b from-primary/8 to-transparent">
-            <div className="flex items-center gap-2.5 mb-1">
-              <div className="w-7 h-7 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Brain size={13} className="text-primary" />
-              </div>
-              <span className="text-sm font-bold text-primary">SPARK Brain</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Co-designing your campaign</p>
-          </div>
-
-          <div className="flex-1 px-6 py-5 space-y-5">
-            {/* Current state */}
-            <div>
-              <p className={`text-sm font-semibold mb-3 ${brain.headline.includes("%") && score < 80 ? "text-amber-300" : brain.headline.includes("missing") || brain.headline.includes("No ") ? "text-muted-foreground" : ""}`}>{brain.headline}</p>
-              <ul className="space-y-2.5">
-                {brain.bullets.filter(Boolean).map((b, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <Sparkles size={9} className="text-primary mt-0.5 shrink-0" />
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {brain.warning && (
-              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl border border-red-500/15 bg-red-500/5 text-xs text-red-300">
-                <AlertTriangle size={10} className="shrink-0 mt-0.5" />{brain.warning}
-              </div>
-            )}
-
-            {brain.actions && brain.actions.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">AI can do this</p>
-                {brain.actions.map((a, i) => (
-                  <button key={i} onClick={a.onClick}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-primary/15 bg-primary/5 hover:bg-primary/10 text-xs text-primary transition-colors">
-                    <span className="flex items-center gap-1.5"><Zap size={9} />{a.label}</span>
-                    <ArrowRight size={9} />
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {brain.tip && (
-              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] text-xs text-muted-foreground">
-                <Lightbulb size={10} className="shrink-0 mt-0.5 text-amber-400" />{brain.tip}
-              </div>
-            )}
-
-            {/* Live campaign summary */}
-            {(form.primaryGoal || form.totalBudget || form.platforms.length > 0) && (
-              <div className="pt-2 border-t border-white/5 space-y-2.5">
-                <p className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">Campaign so far</p>
-                {[
-                  form.name && ["Name", form.name],
-                  form.primaryGoal && ["Goal", GOAL_LABELS[form.primaryGoal]],
-                  form.geography && ["Where", form.geography.split(",")[0].trim()],
-                  form.totalBudget && ["Budget", `$${Number(form.totalBudget).toLocaleString()}/mo`],
-                  form.platforms.length > 0 && ["Platforms", form.platforms.map((p) => p === "Microsoft Advertising" ? "Bing" : p.split(" ")[0]).join(", ")],
-                ].filter(Boolean).map(([k, v]: any, i) => (
-                  <div key={i} className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{k}</span>
-                    <span className="font-medium text-foreground/80 text-right ml-2 truncate max-w-[130px]">{v}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Provider readiness panel */}
+        <ProviderReadinessPanel blueprint={blueprint} intent={intent} />
       </div>
 
       {/* Footer nav */}
-      <div className="shrink-0 flex items-center justify-between px-8 py-4 border-t border-white/5 bg-[#0b0d14]">
-        <button onClick={() => step > 0 ? setStep(step - 1) : onClose()}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
-          <ChevronLeft size={14} />{step === 0 ? "Cancel" : "Back"}
+      <div className="shrink-0 flex items-center justify-between px-10 py-4 border-t border-white/[0.06]">
+        <button onClick={() => {
+          const idx = STUDIO_SECTIONS.findIndex((s) => s.id === activeSection);
+          if (idx > 0) setActiveSection(STUDIO_SECTIONS[idx - 1].id);
+          else onClose();
+        }} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ChevronLeft size={14} />
+          {activeSection === "intent" ? "Cancel" : STUDIO_SECTIONS[STUDIO_SECTIONS.findIndex((s) => s.id === activeSection) - 1]?.label || "Back"}
         </button>
-
-        <div className="flex items-center gap-2">
-          {step < STEPS.length - 1 ? (
-            <button onClick={() => setStep(step + 1)}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
-              Continue <ChevronRight size={14} />
-            </button>
-          ) : (
-            <button onClick={handleRequestApproval} disabled={saving || !canApprove}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-colors ${canApprove ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-white/5 text-muted-foreground cursor-not-allowed"}`}>
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
-              Request Approval
-            </button>
-          )}
-        </div>
+        {activeSection !== "review" && (
+          <button onClick={() => {
+            const idx = STUDIO_SECTIONS.findIndex((s) => s.id === activeSection);
+            if (idx < STUDIO_SECTIONS.length - 1) setActiveSection(STUDIO_SECTIONS[idx + 1].id);
+          }} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] text-sm text-foreground/80 hover:text-foreground transition-colors">
+            {STUDIO_SECTIONS[STUDIO_SECTIONS.findIndex((s) => s.id === activeSection) + 1]?.label || "Next"}
+            <ChevronRight size={14} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -778,180 +932,205 @@ function CampaignWorkspace({ open, onClose, mode, campaign }: WorkspaceProps) {
 
 // ─── PPC Overview ─────────────────────────────────────────────────────────────
 
-function PPCOverview({ campaigns, onNewCampaign, onEditCampaign }: { campaigns: Campaign[]; onNewCampaign: () => void; onEditCampaign: (c: Campaign) => void }) {
-  const [filter, setFilter] = useState("");
-  const filtered = campaigns.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase()));
-
+function PPCOverview({ campaigns, onNewCampaign, onEditCampaign }: {
+  campaigns: Campaign[]; onNewCampaign: () => void; onEditCampaign: (c: Campaign) => void;
+}) {
+  const active = campaigns.filter((c) => c.status === "live" || c.status === "optimising");
+  const trackingIssues = campaigns.filter((c) => c.trackingStatus !== "ok");
+  const pending = campaigns.filter((c) => c.approvalStatus === "pending");
   const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
   const totalBudget = campaigns.reduce((s, c) => s + c.budget, 0);
-  const activeCampaigns = campaigns.filter((c) => c.status === "live" || c.status === "optimising");
-  const trackingIssues = campaigns.filter((c) => c.trackingStatus !== "ok");
-  const pendingApprovals = campaigns.filter((c) => c.approvalStatus === "pending");
   const topRec = campaigns.find((c) => c.sparkRec);
 
-  const budgetPct = totalBudget ? Math.round((totalSpend / totalBudget) * 100) : 0;
+  const OPPORTUNITIES = [
+    { label: "Add 14 negatives to Non-Brand", impact: "~$1,840 saved/mo", effort: "5 min", type: "Negative KW" },
+    { label: "Shift $3k Competitor → Brand Search", impact: "ROAS 6.1× vs 1.8×", effort: "2 min", type: "Budget" },
+    { label: "Fix GA4 event on Enterprise Lead Gen", impact: "Required for launch", effort: "15 min", type: "Tracking" },
+  ];
 
   return (
-    <div className="space-y-8">
-      {/* Command band */}
-      <div className="rounded-2xl border border-white/5 bg-gradient-to-br from-primary/8 via-transparent to-transparent p-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative flex items-start justify-between gap-6">
-          <div className="flex-1">
-            <p className="text-xs text-primary font-semibold uppercase tracking-wider mb-3">SPARK Intelligence</p>
+    <div className="grid grid-cols-[1fr_300px] gap-8 items-start">
+      {/* Left column */}
+      <div className="space-y-8">
+        {/* Command band */}
+        <div className="p-7 rounded-2xl border border-white/[0.06] bg-gradient-to-br from-primary/8 via-[#0c0e18] to-transparent relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-72 h-48 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative">
+            <p className="text-xs font-bold text-primary/70 uppercase tracking-widest mb-4">SPARK Intelligence · Top Opportunity</p>
             {topRec ? (
               <>
-                <p className="text-xl font-bold tracking-tight mb-1">{topRec.sparkRec}</p>
-                <p className="text-sm text-muted-foreground">{topRec.name} · Apply this recommendation to reduce waste and improve ROAS.</p>
+                <p className="text-2xl font-bold mb-2">{topRec.sparkRec}</p>
+                <p className="text-base text-muted-foreground">{topRec.name}</p>
               </>
             ) : (
-              <>
-                <p className="text-xl font-bold tracking-tight mb-1">All campaigns are healthy</p>
-                <p className="text-sm text-muted-foreground">No critical actions required right now.</p>
-              </>
+              <p className="text-2xl font-bold">All campaigns healthy — no critical actions.</p>
             )}
-            <button className="flex items-center gap-1.5 mt-4 text-xs text-primary hover:text-primary/80 transition-colors">
-              <Zap size={11} /> View all AI recommendations <ArrowRight size={10} />
-            </button>
+            <div className="flex items-center gap-6 mt-6">
+              <div>
+                <p className="text-3xl font-bold text-green-400">{active.length}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Active campaigns</p>
+              </div>
+              <div className="w-px h-10 bg-white/[0.06]" />
+              <div>
+                <p className="text-3xl font-bold">${(totalSpend / 1000).toFixed(1)}k</p>
+                <p className="text-xs text-muted-foreground mt-0.5">of ${(totalBudget / 1000).toFixed(0)}k/mo</p>
+              </div>
+              <div className="w-px h-10 bg-white/[0.06]" />
+              <div>
+                <p className={`text-3xl font-bold ${pending.length > 0 ? "text-amber-400" : "text-muted-foreground"}`}>{pending.length}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Awaiting approval</p>
+              </div>
+              <div className="w-px h-10 bg-white/[0.06]" />
+              <div>
+                <p className={`text-3xl font-bold ${trackingIssues.length > 0 ? "text-red-400" : "text-green-400"}`}>{trackingIssues.length}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{trackingIssues.length > 0 ? "Tracking issues" : "All tracking OK"}</p>
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 shrink-0">
-            {[
-              { label: "Active", value: activeCampaigns.length, note: "campaigns", color: "text-green-400" },
-              { label: "Spend", value: `$${(totalSpend/1000).toFixed(1)}k`, note: `of $${(totalBudget/1000).toFixed(0)}k`, color: "text-foreground" },
-              { label: "Approvals", value: pendingApprovals.length, note: "pending", color: pendingApprovals.length > 0 ? "text-amber-400" : "text-muted-foreground" },
-              { label: "Issues", value: trackingIssues.length, note: "tracking", color: trackingIssues.length > 0 ? "text-red-400" : "text-muted-foreground" },
-            ].map((kpi) => (
-              <div key={kpi.label} className="text-right">
-                <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
-                <p className="text-xs text-muted-foreground">{kpi.label} · {kpi.note}</p>
+        </div>
+
+        {/* Campaign list */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest">Campaigns</p>
+            <button onClick={onNewCampaign} className="text-xs text-primary flex items-center gap-1 hover:text-primary/80 transition-colors"><Plus size={11} /> New</button>
+          </div>
+          <div className="space-y-px">
+            <div className="grid grid-cols-[1fr_120px_80px_70px_70px_24px] px-4 py-2 text-xs text-muted-foreground/40 uppercase tracking-wider">
+              <span>Campaign</span><span>Status</span><span className="text-right">Budget</span><span className="text-right">Conv.</span><span className="text-right">CPL</span><span />
+            </div>
+            {campaigns.map((c) => (
+              <div key={c.id} className="group grid grid-cols-[1fr_120px_80px_70px_70px_24px] items-center px-4 py-4 rounded-xl hover:bg-white/[0.03] transition-colors" data-testid={`campaign-row-${c.id}`}>
+                <div>
+                  <div className="flex items-center gap-2.5 mb-0.5">
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.status === "live" || c.status === "optimising" ? "bg-green-400" : c.status === "approval" ? "bg-amber-400" : c.status === "data_check" ? "bg-red-400" : "bg-white/20"}`} />
+                    <span className="font-medium text-sm">{c.name}</span>
+                    {c.trackingStatus !== "ok" && <AlertTriangle size={11} className={`${c.trackingStatus === "error" ? "text-red-400" : "text-amber-400"} shrink-0`} />}
+                  </div>
+                  {c.sparkRec && <p className="text-xs text-primary/60 ml-4">{c.sparkRec}</p>}
+                </div>
+                <div>
+                  <span className={`text-xs font-medium ${STATUS_CONFIG[c.status].color}`}>{STATUS_CONFIG[c.status].label}</span>
+                </div>
+                <p className="text-right text-sm">{c.budget ? `$${(c.budget / 1000).toFixed(0)}k` : "—"}</p>
+                <p className="text-right text-sm text-primary">{c.conversions > 0 ? c.conversions : "—"}</p>
+                <p className="text-right text-sm text-muted-foreground">{c.cpl > 0 ? `$${c.cpl.toFixed(0)}` : "—"}</p>
+                <button onClick={() => onEditCampaign(c)} className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground" data-testid={`btn-edit-${c.id}`}>
+                  <Edit size={12} />
+                </button>
               </div>
             ))}
           </div>
         </div>
-        {/* Budget progress */}
-        <div className="mt-5 pt-5 border-t border-white/5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-            <span>Budget utilisation</span>
-            <span className="text-foreground">${totalSpend.toLocaleString()} of ${totalBudget.toLocaleString()}</span>
-          </div>
-          <Progress value={budgetPct} className="h-1" />
+
+        {/* Platform accounts */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground/50 mr-1">Accounts:</span>
+          {(["Google Ads","Microsoft Advertising","Baidu","Naver"] as Platform[]).map((p) => (
+            <span key={p} className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${PLATFORM_CONN[p] ? "border-green-500/15 text-green-400" : "border-white/[0.06] text-muted-foreground/50"}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${PLATFORM_CONN[p] ? "bg-green-400" : "bg-white/15"}`} />
+              {p === "Microsoft Advertising" ? "Bing" : p}
+            </span>
+          ))}
+          <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 transition-colors">
+            <Plus size={10} /> Connect
+          </button>
         </div>
       </div>
 
-      {/* Inline alerts — only when needed */}
-      {(pendingApprovals.length > 0 || trackingIssues.length > 0) && (
-        <div className="flex flex-wrap gap-3">
-          {pendingApprovals.length > 0 && (
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-500/20 bg-amber-500/5 text-sm flex-1 min-w-[200px]">
-              <AlertCircle size={14} className="text-amber-400 shrink-0" />
-              <span className="text-amber-300"><span className="font-semibold">{pendingApprovals.length} campaign{pendingApprovals.length > 1 ? "s" : ""}</span> awaiting approval</span>
-              <button className="ml-auto text-xs text-amber-400/70 hover:text-amber-300 transition-colors flex items-center gap-1">Review <ChevronRight size={10} /></button>
-            </div>
-          )}
-          {trackingIssues.length > 0 && (
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-red-500/20 bg-red-500/5 text-sm flex-1 min-w-[200px]">
-              <XCircle size={14} className="text-red-400 shrink-0" />
-              <span className="text-red-300"><span className="font-semibold">{trackingIssues.length} campaign{trackingIssues.length > 1 ? "s" : ""}</span> with tracking issues</span>
-              <button className="ml-auto text-xs text-red-400/70 hover:text-red-300 transition-colors flex items-center gap-1">Fix <ChevronRight size={10} /></button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Campaign list */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Search Campaigns</h2>
-          <div className="relative">
-            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search…" value={filter} onChange={(e) => setFilter(e.target.value)} className="pl-8 h-8 w-40 text-xs bg-white/[0.02] border-white/8" />
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          {/* Header row */}
-          <div className="grid grid-cols-[1fr_100px_90px_90px_70px_70px_24px] items-center px-4 py-2 text-xs text-muted-foreground/60 uppercase tracking-wider">
-            <span>Campaign</span><span>Platforms</span><span className="text-right">Budget</span><span className="text-right">Spend</span><span className="text-right">Conv.</span><span className="text-right">CPL</span><span />
-          </div>
-
-          {filtered.map((c) => {
-            const pct = c.budget ? Math.min(Math.round((c.spend / c.budget) * 100), 100) : 0;
-            return (
-              <div key={c.id} className="group grid grid-cols-[1fr_100px_90px_90px_70px_70px_24px] items-center px-4 py-4 rounded-xl hover:bg-white/[0.03] transition-colors" data-testid={`campaign-row-${c.id}`}>
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.status === "live" || c.status === "optimising" ? "bg-green-400" : c.status === "approval" ? "bg-amber-400" : c.status === "data_check" ? "bg-red-400" : "bg-white/20"}`} />
-                    <span className="font-medium text-sm">{c.name}</span>
-                    {c.trackingStatus === "error" && <AlertCircle size={12} className="text-red-400 shrink-0" />}
-                    {c.trackingStatus === "warning" && <AlertTriangle size={12} className="text-amber-400 shrink-0" />}
+      {/* Right column — priorities */}
+      <div className="space-y-6">
+        {/* Pending approvals */}
+        {pending.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest mb-3">Awaiting Approval</p>
+            <div className="space-y-2">
+              {pending.map((c) => (
+                <div key={c.id} className="p-4 rounded-xl border border-amber-500/15 bg-amber-500/[0.04]">
+                  <p className="text-sm font-medium mb-1">{c.name}</p>
+                  <p className="text-xs text-muted-foreground">{c.owner} · ${c.budget.toLocaleString()}/mo</p>
+                  <div className="flex gap-2 mt-3">
+                    <button className="flex-1 py-1.5 rounded-lg border border-white/[0.06] text-xs text-muted-foreground hover:text-foreground transition-colors">Reject</button>
+                    <button className="flex-1 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors">Approve</button>
                   </div>
-                  {c.sparkRec && <p className="text-xs text-primary/70 ml-4 mt-0.5">{c.sparkRec}</p>}
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {c.platforms.map((p) => <span key={p} className="text-xs text-muted-foreground">{p === "Microsoft Advertising" ? "Bing" : p === "Google Ads" ? "Google" : p}</span>).reduce((acc: any, x, i) => i === 0 ? [x] : [...acc, <span key={`sep-${i}`} className="text-white/20">·</span>, x], [])}
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-medium">${c.budget.toLocaleString()}</p>
-                  {c.spend > 0 && <div className="ml-auto mt-1 h-0.5 w-12 bg-white/10 rounded-full"><div className={`h-full rounded-full ${pct > 90 ? "bg-red-400" : "bg-primary"}`} style={{ width: `${pct}%` }} /></div>}
-                </div>
-                <p className="text-right text-xs text-muted-foreground">{c.spend > 0 ? `$${c.spend.toLocaleString()}` : "—"}</p>
-                <p className="text-right text-xs font-medium text-primary">{c.conversions > 0 ? c.conversions : "—"}</p>
-                <p className="text-right text-xs text-muted-foreground">{c.cpl > 0 ? `$${c.cpl.toFixed(0)}` : "—"}</p>
-                <button onClick={() => onEditCampaign(c)} className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground" data-testid={`btn-edit-${c.id}`} title="Edit">
-                  <Edit size={12} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-      {/* Connected accounts — minimal */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-xs text-muted-foreground mr-2">Accounts:</span>
-        {(["Google Ads", "Microsoft Advertising", "Baidu", "Naver"] as Platform[]).map((p) => (
-          <span key={p} className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${PLATFORM_STATUS[p] === "connected" ? "border-green-500/20 text-green-400" : "border-white/8 text-muted-foreground"}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${PLATFORM_STATUS[p] === "connected" ? "bg-green-400" : "bg-white/20"}`} />
-            {p === "Microsoft Advertising" ? "Bing" : p}
-          </span>
-        ))}
-        <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 transition-colors ml-1">
-          <Plus size={10} /> Connect
-        </button>
+        {/* Tracking issues */}
+        {trackingIssues.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest mb-3">Tracking Issues</p>
+            <div className="space-y-2">
+              {trackingIssues.map((c) => (
+                <div key={c.id} className={`p-4 rounded-xl border ${c.trackingStatus === "error" ? "border-red-500/15 bg-red-500/[0.04]" : "border-amber-500/15 bg-amber-500/[0.04]"}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    {c.trackingStatus === "error" ? <XCircle size={12} className="text-red-400" /> : <AlertTriangle size={12} className="text-amber-400" />}
+                    <p className="text-sm font-medium">{c.name}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Review tracking setup before campaign goes live.</p>
+                  <button className="mt-2 text-xs text-primary hover:text-primary/80 transition-colors">Open Blueprint →</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* AI Opportunities */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest mb-3">AI Opportunities</p>
+          <div className="space-y-2">
+            {OPPORTUNITIES.map((opp, i) => (
+              <div key={i} className="p-4 rounded-xl border border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.03] transition-colors">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs px-2 py-0.5 rounded-full border border-primary/20 text-primary/70">{opp.type}</span>
+                </div>
+                <p className="text-sm font-medium mb-1">{opp.label}</p>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="text-green-400/80">{opp.impact}</span>
+                  <span>{opp.effort}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Recommendations View ─────────────────────────────────────────────────────
+// ─── Secondary views ──────────────────────────────────────────────────────────
 
 function RecommendationsView() {
   const RECS = [
-    { type: "Negative Keywords", priority: "high", title: "Add 14 negative keywords to cut ~$1,840 wasted spend", campaign: "Non-Brand — Singapore SMEs", effort: "5 min" },
-    { type: "Budget Shift", priority: "high", title: "Move $3k from Competitor Conquest (1.8× ROAS) → Brand Search (6.1× ROAS)", campaign: "Global reallocation", effort: "2 min" },
-    { type: "Tracking", priority: "high", title: "Fix missing GA4 conversion event on Enterprise Lead Gen before launch", campaign: "Enterprise Lead Gen", effort: "15 min" },
-    { type: "Ad Copy", priority: "medium", title: "Refresh headlines for Competitor Conquest — CTR at 1.9%, below 3.5% benchmark", campaign: "Competitor Conquest", effort: "10 min" },
-    { type: "New Campaign", priority: "low", title: "Create HubSpot competitor campaign — 22K APAC searches/month going uncaptured", campaign: "Suggested", effort: "30 min" },
+    { type: "Negative Keywords", priority: "high", title: "Add 14 negative keywords to eliminate ~$1,840/mo wasted spend", campaign: "Non-Brand — Singapore SMEs", effort: "5 min", impact: "$1,840 saved" },
+    { type: "Budget Reallocation", priority: "high", title: "Move $3k from Competitor Conquest (1.8× ROAS) to Brand Search (6.1× ROAS)", campaign: "Global", effort: "2 min", impact: "+$4k projected return" },
+    { type: "Tracking Fix", priority: "high", title: "Fix missing GA4 conversion event on Enterprise Lead Gen before launch", campaign: "Enterprise Lead Gen", effort: "15 min", impact: "Required for Smart Bidding" },
+    { type: "Ad Refresh", priority: "medium", title: "Refresh headlines for Competitor Conquest — CTR at 1.9%, benchmark is 3.5%", campaign: "Competitor Conquest", effort: "10 min", impact: "+80% estimated CTR" },
+    { type: "New Campaign", priority: "low", title: "Create HubSpot competitor campaign — 22K APAC searches/month uncaptured", campaign: "Suggested", effort: "30 min", impact: "New pipeline source" },
   ];
-  const priorityColor: Record<string, string> = { high: "text-red-400", medium: "text-amber-400", low: "text-muted-foreground" };
-
+  const priorityDot: Record<string, string> = { high: "bg-red-400", medium: "bg-amber-400", low: "bg-muted-foreground" };
   return (
-    <div className="space-y-3 max-w-3xl">
+    <div className="max-w-3xl space-y-3">
       {RECS.map((r, i) => (
-        <div key={i} className="flex items-center gap-5 px-5 py-4 rounded-2xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-colors">
+        <div key={i} className="flex items-start gap-5 p-6 rounded-2xl border border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.03] transition-colors">
+          <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${priorityDot[r.priority]}`} />
           <div className="flex-1">
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <span className={`text-xs font-semibold ${priorityColor[r.priority]}`}>{r.priority.toUpperCase()}</span>
-              <span className="text-xs text-muted-foreground/50">·</span>
-              <span className="text-xs text-primary/70 font-medium">{r.type}</span>
-              <span className="text-xs text-muted-foreground/50">·</span>
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="text-xs font-semibold text-primary/70 uppercase tracking-wide">{r.type}</span>
+              <span className="text-xs text-muted-foreground/40">·</span>
               <span className="text-xs text-muted-foreground">{r.campaign}</span>
             </div>
-            <p className="text-sm font-medium">{r.title}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Est. effort: {r.effort}</p>
+            <p className="text-base font-medium mb-1.5">{r.title}</p>
+            <div className="flex gap-4 text-xs">
+              <span className="text-green-400/80">{r.impact}</span>
+              <span className="text-muted-foreground">Est. {r.effort}</span>
+            </div>
           </div>
           <div className="flex gap-2 shrink-0">
-            <button className="px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">Dismiss</button>
+            <button className="px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors">Dismiss</button>
             <button className="px-4 py-2 rounded-xl bg-primary/10 border border-primary/20 text-xs text-primary hover:bg-primary/15 transition-colors flex items-center gap-1.5"><Zap size={10} /> Apply</button>
           </div>
         </div>
@@ -960,31 +1139,27 @@ function RecommendationsView() {
   );
 }
 
-// ─── Approvals View ───────────────────────────────────────────────────────────
-
 function ApprovalsView() {
   const APPROVALS = [
     { title: "Budget approval — Enterprise Lead Gen", type: "Budget", amount: "$18,000/mo", by: "Sarah Park", time: "2h ago", urgent: true },
-    { title: "Keyword approval — Baidu China Expansion", type: "Keywords", amount: "142 keywords", by: "Priya Sharma", time: "4h ago", urgent: false },
-    { title: "Ad copy approval — Competitor Conquest v2", type: "Ad Copy", amount: "6 variants", by: "David Lee", time: "Yesterday", urgent: false },
+    { title: "Keyword approval — Baidu China Expansion", type: "Keywords", amount: "142 keyword themes", by: "Priya Sharma", time: "4h ago", urgent: false },
+    { title: "Ad copy approval — Competitor Conquest v2", type: "Ad Direction", amount: "6 variants", by: "David Lee", time: "Yesterday", urgent: false },
   ];
   return (
-    <div className="space-y-3 max-w-3xl">
+    <div className="max-w-3xl space-y-3">
       {APPROVALS.map((a, i) => (
-        <div key={i} className={`flex items-center gap-5 px-5 py-4 rounded-2xl border transition-colors ${a.urgent ? "border-amber-500/15 bg-amber-500/[0.03]" : "border-white/5 bg-white/[0.01]"}`}>
+        <div key={i} className={`flex items-start gap-5 p-6 rounded-2xl border ${a.urgent ? "border-amber-500/15 bg-amber-500/[0.03]" : "border-white/[0.06] bg-white/[0.01]"}`}>
           <div className="flex-1">
-            <div className="flex items-center gap-2.5 mb-1.5">
-              {a.urgent && <span className="text-xs font-semibold text-amber-400">URGENT</span>}
-              <span className="text-xs text-muted-foreground font-medium">{a.type}</span>
-              <span className="text-xs text-muted-foreground/50">·</span>
-              <span className="text-xs text-muted-foreground">{a.amount}</span>
+            <div className="flex items-center gap-2.5 mb-2">
+              {a.urgent && <span className="text-xs font-bold text-amber-400">URGENT</span>}
+              <span className="text-xs text-muted-foreground">{a.type} · {a.amount}</span>
             </div>
-            <p className="text-sm font-medium">{a.title}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Requested by {a.by} · {a.time}</p>
+            <p className="text-base font-medium mb-1">{a.title}</p>
+            <p className="text-sm text-muted-foreground">Requested by {a.by} · {a.time}</p>
           </div>
           <div className="flex gap-2 shrink-0">
-            <button className="px-3 py-2 rounded-xl border border-red-500/20 text-xs text-red-400 hover:bg-red-500/5 transition-colors">Reject</button>
-            <button className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors flex items-center gap-1.5"><CheckCircle size={10} /> Approve</button>
+            <button className="px-4 py-2 rounded-xl border border-white/[0.08] text-xs text-muted-foreground hover:text-foreground transition-colors">Reject</button>
+            <button className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors flex items-center gap-1.5"><CheckCircle size={11} /> Approve</button>
           </div>
         </div>
       ))}
@@ -992,19 +1167,27 @@ function ApprovalsView() {
   );
 }
 
-// ─── Reports View ─────────────────────────────────────────────────────────────
-
 function ReportsView() {
-  const REPORTS = ["Campaign Performance Summary", "Platform Comparison (Google vs Bing)", "Keyword Performance", "Budget Pacing Report", "Lead Quality & CRM Attribution", "AI Executive Summary"];
+  const REPORTS = [
+    { name: "Campaign Performance Summary", note: "All campaigns · Last 30 days" },
+    { name: "Platform Comparison", note: "Google vs Bing side-by-side" },
+    { name: "Keyword Performance", note: "By theme cluster and match type" },
+    { name: "Budget Pacing", note: "Spend vs. plan by campaign" },
+    { name: "Lead Quality & CRM Attribution", note: "Pipeline source breakdown" },
+    { name: "AI Executive Summary", note: "Auto-generated by SPARK" },
+  ];
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl">
       {REPORTS.map((r) => (
-        <div key={r} className="group p-5 rounded-2xl border border-white/5 bg-white/[0.01] hover:border-white/10 hover:bg-white/[0.03] transition-all cursor-pointer">
-          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center mb-4"><FileText size={14} className="text-primary" /></div>
-          <p className="text-sm font-semibold mb-4">{r}</p>
-          <div className="flex items-center gap-2">
-            <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"><Eye size={11} /> View</button>
-            <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors ml-auto"><Download size={11} /></button>
+        <div key={r.name} className="p-6 rounded-2xl border border-white/[0.06] bg-white/[0.01] hover:border-white/[0.10] hover:bg-white/[0.03] transition-all cursor-pointer group">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/15 transition-colors">
+            <BarChart2 size={15} className="text-primary" />
+          </div>
+          <p className="font-semibold mb-1">{r.name}</p>
+          <p className="text-xs text-muted-foreground mb-5">{r.note}</p>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <button className="flex items-center gap-1 hover:text-foreground transition-colors"><Eye size={11} /> View</button>
+            <button className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto"><Download size={11} /></button>
           </div>
         </div>
       ))}
@@ -1016,20 +1199,21 @@ function ReportsView() {
 
 export default function PPC() {
   const [campaigns] = useState<Campaign[]>(MOCK_CAMPAIGNS);
-  const [workspaceOpen, setWorkspaceOpen] = useState(false);
-  const [workspaceMode, setWorkspaceMode] = useState<WizardMode>("create");
+  const [studioOpen, setStudioOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [sessionId, setSessionId] = useState("init");
   const [activeTab, setActiveTab] = useState("overview");
 
   const openNewCampaign = () => {
-    setWorkspaceMode("create"); setSelectedCampaign(null);
-    setSessionId(Date.now().toString()); setWorkspaceOpen(true);
+    setSelectedCampaign(null);
+    setSessionId(Date.now().toString());
+    setStudioOpen(true);
   };
 
   const openEditCampaign = (c: Campaign) => {
-    setWorkspaceMode("edit"); setSelectedCampaign(c);
-    setSessionId(`edit-${c.id}-${Date.now()}`); setWorkspaceOpen(true);
+    setSelectedCampaign(c);
+    setSessionId(`edit-${c.id}-${Date.now()}`);
+    setStudioOpen(true);
   };
 
   const TABS = [
@@ -1041,21 +1225,21 @@ export default function PPC() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Page header */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold" data-testid="heading-ppc">PPC / Paid Search</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Google, Bing, Baidu, Naver — one command centre.</p>
         </div>
         <button onClick={openNewCampaign}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
           data-testid="btn-new-campaign">
           <Plus size={14} /> New Campaign
         </button>
       </div>
 
-      {/* Tabs — minimal, text-only */}
-      <div className="flex items-center gap-1 border-b border-white/5">
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-white/[0.06]">
         {TABS.map((tab) => (
           <button key={tab.value} onClick={() => setActiveTab(tab.value)}
             className={`px-4 py-2.5 text-sm transition-colors border-b-2 -mb-px ${activeTab === tab.value ? "border-primary text-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
@@ -1065,7 +1249,6 @@ export default function PPC() {
         ))}
       </div>
 
-      {/* Tab content */}
       <div>
         {activeTab === "overview" && <PPCOverview campaigns={campaigns} onNewCampaign={openNewCampaign} onEditCampaign={openEditCampaign} />}
         {activeTab === "recommendations" && <RecommendationsView />}
@@ -1073,13 +1256,11 @@ export default function PPC() {
         {activeTab === "reports" && <ReportsView />}
       </div>
 
-      {/* Campaign Workspace — full-page overlay */}
-      <CampaignWorkspace
+      <BlueprintStudio
         key={sessionId}
-        open={workspaceOpen}
-        onClose={() => setWorkspaceOpen(false)}
-        mode={workspaceMode}
-        campaign={selectedCampaign}
+        open={studioOpen}
+        onClose={() => setStudioOpen(false)}
+        initialCampaign={selectedCampaign}
       />
     </div>
   );

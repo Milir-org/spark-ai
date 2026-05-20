@@ -1,0 +1,256 @@
+Redesign the current `PPC.tsx` into a modern SPARK AI PPC experience that is API-aware, future-friendly, and visually premium.
+
+Important:
+This is not a styling cleanup task.
+This is a workflow redesign task.
+
+Current problem:
+The current PPC experience still feels like a compact admin wizard or AWS-style enterprise screen. It uses small text, too many form-like controls, and too much conventional SaaS/dashboard grammar. It does not feel intuitive, spacious, AI-native, or premium.
+
+Target feeling:
+- modern AI-native SaaS
+- calm and spacious
+- strategic, not technical
+- intuitive without certification
+- enterprise-grade without looking bureaucratic
+- guided, not overwhelming
+- visually premium and “new age SaaS”, not default dashboard UI
+
+Core product rule:
+SPARK should not feel like a raw Google Ads form.
+SPARK should feel like an AI campaign blueprint studio that can later map into provider-specific drafts such as Google Ads and Microsoft Advertising.
+
+Design and workflow objective:
+Replace the current form-heavy wizard approach with a “Campaign Blueprint Studio” for PPC.
+
+Main UX model:
+1. User defines campaign intent
+2. SPARK generates a PPC blueprint
+3. User refines the blueprint
+4. SPARK shows provider draft readiness
+5. User requests approval
+6. Later the system can apply to provider APIs
+
+This means the UI should center around a generated campaign blueprint, not around a sequence of tiny form fields.
+
+Support for objectives:
+Do not force only one rigid objective field with nothing else.
+Use:
+- one primary objective
+- optional secondary objectives
+
+Examples:
+Primary objective:
+- Generate Leads
+- Drive Sales
+- Book Appointments
+- Website Traffic
+- Brand Protection
+- Competitor Conquest
+
+Secondary objectives:
+- improve lead quality
+- reduce CPL
+- increase branded coverage
+- test new keyword clusters
+- improve CTR
+- expand into new geography
+
+Rules:
+- Primary objective is required
+- Secondary objectives are optional and multi-select
+- The primary objective drives the main strategy, budget logic, and conversion emphasis
+- Secondary objectives should influence recommendations and notes, but not override the primary objective
+- The UI should clearly communicate this difference
+
+New workflow structure required:
+
+1. PPC Overview
+Keep a PPC overview screen, but redesign it to feel more like a command center and less like a default admin dashboard.
+
+The overview should focus on:
+- active campaigns
+- draft campaigns
+- pending approvals
+- tracking health
+- provider connection status
+- top AI opportunities
+- recent changes / sync state
+
+Do not let the campaign table dominate the experience.
+Use stronger hierarchy and a more curated layout.
+The most important information should be priorities, opportunities, and campaign health.
+
+2. Campaign Blueprint Studio
+When user clicks New Campaign or edits a draft, open a dedicated full-page PPC Blueprint Studio.
+Do not use a conventional modal.
+Do not make it feel like a regular form wizard.
+
+The studio should feel like:
+- a strategic workspace
+- a campaign design surface
+- a calm AI-guided environment
+
+The main canvas should contain large sections such as:
+- Campaign Intent
+- Audience & Offer
+- Platform Strategy
+- Keyword Themes
+- Negative Keyword Themes
+- Budget & Pacing
+- Ad Direction
+- Tracking & Measurement
+- Approval Readiness
+
+Each section should feel like part of one evolving campaign blueprint.
+
+Important:
+The main content should show generated campaign thinking, not only inputs.
+The UI should make it feel like SPARK is building the plan with the user.
+
+3. AI-native behavior
+Do not keep AI only as a side helper that comments on a manual form.
+SPARK should feel central.
+
+Examples:
+- After campaign intent is entered, show an AI-generated strategic angle
+- Show recommended platform mix
+- Show generated keyword clusters
+- Show negative keyword themes
+- Show ad direction and messaging angle
+- Show conversion and tracking recommendations
+- Show provider readiness notes
+
+The right rail can still exist, but the main canvas itself must feel AI-generated and editable.
+
+4. Provider-aware design
+This PPC workflow must be future-compatible with Google Ads and Microsoft Advertising style APIs.
+
+Do not tightly model the UI around one provider’s raw fields.
+Instead, use a provider-neutral internal model that can later map into provider drafts.
+
+Reflect this in the UI:
+- show “Provider Draft Readiness”
+- show provider compatibility notes
+- show if Google draft is ready
+- show if Microsoft draft is ready
+- show connection status
+- show unresolved validation items
+
+This is a prototype, so the provider draft layer can be mocked visually, but the workflow must be structured around it.
+
+5. Replace tiny form behavior with spacious editing
+Current issue:
+the interface still feels small, compact, and dense.
+
+Fix this by:
+- using larger headings
+- using larger body text
+- using more whitespace
+- reducing the number of borders and little boxes
+- avoiding tiny control-heavy rows
+- avoiding an AWS console feeling
+- making the main workspace feel editorial and intentional
+
+Guidance:
+- body text in workspace should feel comfortably readable
+- section headings should feel bold and spacious
+- use fewer simultaneous fields on screen
+- use larger panels and softer grouping
+- avoid default “card for everything” layout
+- avoid too many badges/chips unless they add real meaning
+
+6. Keep the experience intuitive
+The user should not feel like they need deep PPC knowledge to use this screen.
+
+Use progressive disclosure:
+- show strategic decisions first
+- hide advanced controls behind expandable sections
+- show one clear next action
+- keep helper text short and useful
+- avoid jargon-heavy UI
+- avoid overwhelming the user with too many low-level controls
+
+7. Campaign intent model
+The campaign intent section should include:
+- campaign name
+- primary objective
+- optional secondary objectives
+- urgency / pacing mode
+- offer
+- target geography
+- target audience
+- landing page
+- optional guardrails
+
+But do not render this as a plain ugly form stack.
+Turn it into a premium structured intent section with large spacing and clear hierarchy.
+
+8. Keyword and budget model
+Do not make keyword management just a small textarea plus tiny AI suggestions.
+Turn it into a richer section:
+- keyword themes
+- accepted AI keyword clusters
+- negative keyword themes
+- budget range
+- pacing mode
+- recommended platform split
+
+Keep it visually calm and easy to understand.
+
+9. Tracking and measurement model
+Show:
+- conversion event
+- landing page validity
+- UTM/tracking readiness
+- attribution notes
+- provider readiness notes
+
+This should feel like campaign validation, not like a technical checklist dump.
+
+10. Review and approval
+Do not make review feel like only a readiness percentage with a checklist.
+Instead, make it feel like:
+- executive-ready campaign summary
+- strategic blueprint review
+- provider draft readiness review
+- approval state
+
+11. Information architecture
+Inside PPC keep:
+- Overview
+- Recommendations
+- Approvals
+- Reports
+
+But make the Blueprint Studio the real flagship experience.
+
+12. Visual direction
+Design style should be:
+- premium SaaS command center
+- modern and restrained
+- more spacious than the current design
+- not purple-heavy
+- not dark-dashboard cliché
+- not AWS console
+- not default template look
+- less cramped
+- more typographic hierarchy
+- fewer generic bordered cards
+- subtle depth, gradients, or atmosphere is okay if tasteful
+
+13. Deliverable requirements
+- Refactor `PPC.tsx`
+- If needed, break it into smaller components
+- Preserve mock behavior where useful
+- Keep it responsive
+- Make desktop/laptop experience strong
+- Prototype only is okay, but workflow structure must be correct
+
+14. Critical instruction
+Do not just improve the current wizard.
+Do not just restyle the cards.
+Do not just enlarge fonts slightly.
+
+Instead:
+Rebuild the experience as a PPC Campaign Blueprint Studio that feels AI-native, strategic, spacious, and future-compatible with provider APIs.
