@@ -1,0 +1,31 @@
+kind = "api"
+previewPath = "/api/assets"
+title = "Content Service"
+version = "1.0.0"
+id = "svc-content-v1"
+
+[[services]]
+localPort = 8086
+name = "Content Service"
+paths = ["/api/assets"]
+
+[services.development]
+run = "pnpm --filter @workspace/content-service run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/content-service", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/content-service/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "8086"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/api/healthz"

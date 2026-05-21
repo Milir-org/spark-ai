@@ -1,0 +1,31 @@
+kind = "api"
+previewPath = "/api/approvals"
+title = "Approval Service"
+version = "1.0.0"
+id = "svc-approval-v1"
+
+[[services]]
+localPort = 8083
+name = "Approval Service"
+paths = ["/api/approvals"]
+
+[services.development]
+run = "pnpm --filter @workspace/approval-service run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/approval-service", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/approval-service/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "8083"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/api/healthz"

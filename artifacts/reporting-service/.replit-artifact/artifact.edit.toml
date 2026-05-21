@@ -1,0 +1,31 @@
+kind = "api"
+previewPath = "/api/reports"
+title = "Reporting Service"
+version = "1.0.0"
+id = "svc-reporting-v1"
+
+[[services]]
+localPort = 8087
+name = "Reporting Service"
+paths = ["/api/reports", "/api/dashboard"]
+
+[services.development]
+run = "pnpm --filter @workspace/reporting-service run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/reporting-service", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/reporting-service/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "8087"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/api/healthz"

@@ -1,0 +1,31 @@
+kind = "api"
+previewPath = "/api/channels"
+title = "Intelligence Service"
+version = "1.0.0"
+id = "svc-intelligence-v1"
+
+[[services]]
+localPort = 8085
+name = "Intelligence Service"
+paths = ["/api/channels", "/api/recommendations", "/api/segments"]
+
+[services.development]
+run = "pnpm --filter @workspace/intelligence-service run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/intelligence-service", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/intelligence-service/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "8085"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/api/healthz"

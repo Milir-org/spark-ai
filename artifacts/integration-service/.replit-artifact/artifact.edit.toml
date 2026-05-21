@@ -1,0 +1,31 @@
+kind = "api"
+previewPath = "/api/integrations"
+title = "Integration Service"
+version = "1.0.0"
+id = "svc-integration-v1"
+
+[[services]]
+localPort = 8084
+name = "Integration Service"
+paths = ["/api/integrations"]
+
+[services.development]
+run = "pnpm --filter @workspace/integration-service run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/integration-service", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/integration-service/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "8084"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/api/healthz"

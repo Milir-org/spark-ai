@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "python-3.11"]
 
 [deployment]
 router = "application"
@@ -10,6 +10,116 @@ env = { "CI" = "true" }
 
 [workflows]
 runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/campaign-service: Campaign Service"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/approval-service: Approval Service"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/integration-service: Integration Service"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/intelligence-service: Intelligence Service"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/content-service: Content Service"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/reporting-service: Reporting Service"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/identity-service: Identity Service"
+
+[[workflows.workflow]]
+name = "artifacts/campaign-service: Campaign Service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8082 pnpm --filter @workspace/campaign-service run dev"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "artifacts/approval-service: Approval Service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8083 pnpm --filter @workspace/approval-service run dev"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "artifacts/integration-service: Integration Service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8084 pnpm --filter @workspace/integration-service run dev"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "artifacts/intelligence-service: Intelligence Service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8085 pnpm --filter @workspace/intelligence-service run dev"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "artifacts/content-service: Content Service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8086 pnpm --filter @workspace/content-service run dev"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "artifacts/reporting-service: Reporting Service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8087 pnpm --filter @workspace/reporting-service run dev"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "artifacts/identity-service: Identity Service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8088 pnpm --filter @workspace/identity-service run dev"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [agent]
 stack = "PNPM_WORKSPACE"
@@ -31,6 +141,30 @@ externalPort = 80
 [[ports]]
 localPort = 8082
 externalPort = 3002
+
+[[ports]]
+localPort = 8083
+externalPort = 3001
+
+[[ports]]
+localPort = 8084
+externalPort = 3003
+
+[[ports]]
+localPort = 8085
+externalPort = 4200
+
+[[ports]]
+localPort = 8086
+externalPort = 5000
+
+[[ports]]
+localPort = 8087
+externalPort = 5173
+
+[[ports]]
+localPort = 8088
+externalPort = 6000
 
 [[ports]]
 localPort = 19564

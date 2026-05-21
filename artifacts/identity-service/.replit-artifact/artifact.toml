@@ -1,0 +1,31 @@
+kind = "api"
+previewPath = "/api/auth"
+title = "Identity Service"
+version = "1.0.0"
+id = "svc-identity-v1"
+
+[[services]]
+localPort = 8088
+name = "Identity Service"
+paths = ["/api/auth", "/api/users"]
+
+[services.development]
+run = "PORT=8088 pnpm --filter @workspace/identity-service run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/identity-service", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/identity-service/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "8088"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/api/healthz"

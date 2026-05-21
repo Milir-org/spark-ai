@@ -1,0 +1,31 @@
+kind = "api"
+previewPath = "/api/campaigns"
+title = "Campaign Service"
+version = "1.0.0"
+id = "svc-campaign-v1"
+
+[[services]]
+localPort = 8082
+name = "Campaign Service"
+paths = ["/api/campaigns"]
+
+[services.development]
+run = "pnpm --filter @workspace/campaign-service run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/campaign-service", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/campaign-service/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "8082"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/api/healthz"
